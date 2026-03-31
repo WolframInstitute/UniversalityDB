@@ -1,0 +1,16 @@
+\chapter{Introduction}\label{ch:intro}
+
+The question of which computational systems can simulate which others is central to
+the foundations of computation. Every universality proof is a constructive
+demonstration of simulation, but the proofs are scattered across decades of literature
+in incompatible notation and at varying levels of rigor.
+
+The \emph{Universality Graph} $\UG = (\VV, \EE)$ organizes this landscape:
+\begin{itemize}
+\item Vertices $\VV$: computational systems (Turing machines, cellular automata, tag
+  systems, register machines, combinators, etc.)
+\item Edges $\EE$: directed edges $e : A \to B$ representing a constructive simulation
+  of $B$ by $A$, carrying overhead weights $(\sovh_e, \tovh_e)$
+\end{itemize}
+A system $U$ is \emph{universal} if and only if for every $A \in \VV$ there exists a
+directed path from $A$ to $U$ in $\UG$.

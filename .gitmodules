@@ -1,0 +1,6 @@
+[submodule "Resources/LeanLink"]
+	path = Resources/LeanLink
+	url = https://github.com/WolframInstitute/LeanLink.git
+[submodule "Resources/TuringMachine"]
+	path = Resources/TuringMachine
+	url = https://github.com/WolframInstitute/TuringMachine.git

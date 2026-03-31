@@ -1,0 +1,26 @@
+% Print version of the Blueprint (builds PDF).
+% Build: cd Blueprint && leanblueprint pdf
+
+\documentclass[a4paper]{report}
+
+\usepackage{amsmath,amsfonts,amsthm,amssymb}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage[nameinlink, capitalize]{cleveref}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{array}
+
+\input{preamble/common}
+\input{preamble/print}
+
+\title{The Universality Graph --- Blueprint}
+\author{Wolfram Institute}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\input{chapter/main}
+\bibliographystyle{alpha}
+\bibliography{references}
+\end{document}

@@ -1,0 +1,207 @@
+\chapter{Data Model Design}\label{ch:design}
+
+\section{Three-Layer Architecture}
+
+The data model has three layers:
+
+\textbf{Layer 1: System families} (type schemas with free parameters).
+A system family is a parameterized class of computational systems.
+\begin{itemize}
+\item $\mathrm{TM}(s,k)$: all TMs with $s$ states, $k$ colors. Parameters: $s,k \in \NN^+$.
+\item $\mathrm{ECA}$: all elementary CAs. Parameters: rule $r \in \{0,\ldots,255\}$.
+\item $\mathrm{TagSystem}(m,|\Sigma|)$: tag systems with deletion $m$ over alphabet of size $|\Sigma|$.
+\item $\mathrm{GS}(w,|A|)$: generalized shifts with window $w$, alphabet size $|A|$.
+\item $\mathrm{Billiard}$: planar billiards. Parameters: the table geometry.
+\end{itemize}
+A family $F$ has a \emph{parameter space} $\mathrm{Params}(F)$ and for each
+$p \in \mathrm{Params}(F)$, a specific system $F(p)$ with configuration
+space $\mathrm{Config}(F(p))$ and step function $\mathrm{step}_{F(p)}$.
+
+Some families are themselves parameterized: $\mathrm{TM}(s,k)$ depends on $s,k$.
+This makes a family \emph{schema} with free variables. When $s,k$ are fixed, it
+is a \emph{ground family}. When they are free, a single edge schema generates
+infinitely many ground edges.
+
+\textbf{Layer 2: Simulation edges} (the mathematical content).
+An edge connects a source family to a target family and carries:
+
+\begin{definition}[Simulation edge]\label{sim-edge-def}
+\lean{Graph.Edge}
+\uses{simulation-def, overhead-tuple}
+A simulation edge $e : F_1 \to F_2$ between families consists of:
+\begin{enumerate}
+\item \textbf{Source/target quantifiers.} Either:
+  \begin{itemize}
+  \item $\forall$: the construction works for every instance in the family.
+  \item $\exists(w)$: it works for the specific witness $w \in \mathrm{Params}(F)$.
+  \end{itemize}
+\item \textbf{Target dependence.} The target family (or its parameters) may
+  depend on the source parameters. Example: Moore Thm 7 maps $\mathrm{TM}(s,k)$
+  to $\mathrm{GS}(3, sk+k)$ --- the target parameters are functions of the source.
+\item \textbf{Construction.} A function (or description) mapping:
+  \begin{itemize}
+  \item source instance $\to$ target instance (which machine simulates which),
+  \item source configuration $\to$ target configuration (the encoding),
+  \item target configuration $\to$ source configuration (the decoding).
+  \end{itemize}
+\item \textbf{Weight.} A function $w : \mathrm{Params}(F_1) \times \NN \to \RR_{\geq 0}$
+  mapping source parameters and input size to simulation cost. The classical
+  $(\sovh, \tovh)$ decomposition is the special case where
+  $w(p, n) = \sovh(p) \cdot \tovh(p) \cdot n$ for tape-like systems.
+\item \textbf{Reference.} Full paper citation.
+\item \textbf{Verification level.} One of:
+  \begin{itemize}
+  \item \texttt{FullyVerified}: complete Lean proof, no \texttt{sorry}.
+  \item \texttt{SpotChecked}: \texttt{native\_decide} for finite instances,
+    general statement unproved.
+  \item \texttt{TypeChecked}: Lean statement with \texttt{sorry} proof.
+    Types enforce correct encode/decode signatures.
+  \item \texttt{Unformalized}: paper proof only.
+  \end{itemize}
+\end{enumerate}
+\end{definition}
+
+\textbf{Layer 3: Ground instances} (the renderable graph).
+By fixing all free parameters in a schema edge, we get a ground edge between
+specific families (or specific machines). This is what we visualize and run
+Dijkstra on. The ground graph is finite; the schema graph is also finite
+(one node per family, one edge per theorem).
+
+\section{Edge Quantifier Semantics}
+
+\begin{center}
+\begin{tabular}{cclll}
+\toprule
+Source & Target & Meaning & Example & Type \\
+\midrule
+$\forall$ & $\forall$ & uniform construction & Moore Thm 7 & functor \\
+$\forall$ & $\exists(w)$ & universal machine $w$ & Cook: $\forall$ tag $\hookrightarrow$ Rule 110 & universality \\
+$\exists(v)$ & $\exists(w)$ & specific pair & Smith: 110 $\hookrightarrow$ TM 2506 & instance \\
+$\exists(v)$ & $\forall$ & embedding of one & (rare) & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A machine $U$ is \emph{universal} iff for every family $F$, there is an edge
+$F \to \mathrm{Family}(U)$ with $\forall$-source and $\exists(U)$-target.
+Universality is a property of a specific machine, expressed as: every system
+in every family can be embedded in $U$.
+
+The $\forall$--$\forall$ edges (Moore Thm 7, Bennett's reversibility) are
+\emph{functors}: they map each source instance to a target instance in a uniform
+way. Composition of functorial edges is again functorial.
+
+\section{Schema-Level vs.\ Ground-Level Graph}
+
+\begin{definition}[Universality graph]\label{ug-def}
+\lean{Graph.UniversalityGraph}
+\leanok
+\uses{sim-edge-def}
+The \textbf{schema graph} has:
+\begin{itemize}
+\item Vertices: family schemas (TM, ECA, GS, TagSystem, Billiard, \ldots).
+  These may have free parameters (TM has $s,k$).
+\item Edges: theorems. Each edge is one published result. The graph has
+  $\sim$10--20 vertices and $\sim$20--50 edges.
+\end{itemize}
+\end{definition}
+
+The \textbf{ground graph} (obtained by instantiation) has:
+\begin{itemize}
+\item Vertices: specific families like TM(2,2), TM(2,3), ECA, GS(3,6).
+  Or specific machines like Rule 110, TM rule 2506.
+\item Edges: instantiated theorems with concrete overhead values.
+\end{itemize}
+
+For visualization: the schema graph is drawn with family bubbles and theorem
+arrows. $\forall$-arrows are thick (the whole source family maps in). $\exists$-arrows
+are thin with the witness labeled. Instantiation ``zooms in'' to the ground
+graph.
+
+\section{Weight Function Generalization}
+
+\begin{definition}[Simulation weight]\label{sim-weight}
+\uses{overhead-tuple, scalar-weight}
+\notready
+A simulation weight is a function $w : \NN \to \NN$ mapping the number of
+source steps (on input of size $n$) to the number of target steps. Two
+special cases:
+\begin{enumerate}
+\item \textbf{Tape-like systems}: $w(n, T) = \sovh(n) \cdot \tovh(n) \cdot T$
+  where $\sovh$ is spatial overhead (cells) and $\tovh$ is temporal overhead
+  (steps per step), and $T$ is the number of source steps.
+\item \textbf{General systems}: $w$ is recorded directly, e.g.\
+  ``$\oh{|Q|}$ billiard reflections per TM step.''
+\end{enumerate}
+\end{definition}
+
+The scalar collapse for shortest-path algorithms: fix a reference input size
+$n_0$ and set $\wt(e) = \log w_e(n_0, 1)$. Composition: $w_{e_2 \circ e_1}(n, T)
+= w_{e_2}(\sovh_{e_1}(n), w_{e_1}(n, T))$.
+
+\section{Lean Type Signatures (Proposal)}
+
+Extending the grant proposal's \texttt{CompSystem}/\texttt{Simulation} sketches:
+
+\begin{verbatim}
+-- A system family: parameterized type of computational systems
+structure SystemFamily where
+  Params : Type
+  system : Params -> CompSystem
+
+-- A simulation edge between families
+structure SimEdge (F1 F2 : SystemFamily) where
+  -- Which instances are connected
+  sourceQuant : SourceQuant F1  -- forall or exists(witness)
+  targetQuant : TargetQuant F2  -- forall or exists(witness)
+  -- The construction (for forall-quantified sources)
+  targetParams : F1.Params -> F2.Params
+  encode : (p : F1.Params) -> (F1.system p).Config
+                            -> (F2.system (targetParams p)).Config
+  decode : (p : F1.Params) -> (F2.system (targetParams p)).Config
+                            -> Option (F1.system p).Config
+  -- Correctness
+  roundtrip : forall p c, decode p (encode p c) = some c
+  commutes  : forall p c, ...
+  -- Weight
+  weight : F1.Params -> Nat -> Nat
+
+-- Quantifier types
+inductive SourceQuant (F : SystemFamily) where
+  | all : SourceQuant F
+  | witness : F.Params -> SourceQuant F
+
+inductive TargetQuant (F : SystemFamily) where
+  | all : TargetQuant F
+  | witness : F.Params -> TargetQuant F
+
+-- Verification level
+inductive VerifLevel where
+  | fullyVerified | spotChecked | typeChecked | unformalized
+\end{verbatim}
+
+The key dependent typing: \texttt{targetParams : F1.Params -> F2.Params}
+makes the target family's parameters depend on the source's. For Moore Thm 7:
+\texttt{targetParams (s, k) = (3, s*k+k)}.
+
+\section{Resolution of the Design Issues}
+
+\begin{enumerate}
+\item \textbf{What is a vertex?} A vertex is a \emph{system family} with possibly
+  free parameters. Specific machines are families with singleton parameter space.
+\item \textbf{Quantification?} Carried on the edges, not the vertices. Each edge
+  specifies $\forall$ or $\exists(\text{witness})$ for source and target.
+\item \textbf{Overhead?} A weight function $w : \mathrm{Params} \times \NN \to \NN$,
+  generalizing $(\sovh, \tovh)$. The scalar collapse is $\wt(e) = \log w_e(n_0, 1)$
+  for a fixed reference size.
+\item \textbf{Verification granularity?} A four-level enum:
+  \texttt{FullyVerified}, \texttt{SpotChecked}, \texttt{TypeChecked},
+  \texttt{Unformalized}.
+\end{enumerate}
+
+\section{Next Steps}
+
+Implement this data model in \texttt{Wolfram/UniversalityGraph.wl} (Wolfram side)
+and \texttt{Lean/} (Lean side). The current flat edge table becomes
+a ground-level instantiation of the schema. The schema itself is a small graph
+that we draw and annotate with theorems.

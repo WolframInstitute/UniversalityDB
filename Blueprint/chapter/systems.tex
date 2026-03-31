@@ -1,0 +1,119 @@
+\chapter{Computational Systems}\label{ch:systems}
+
+\section{Turing Machines}
+
+A Turing machine $\mathrm{TM}(n,m)$ has $n$ states and $m$ colors (tape symbols).
+The transition function maps (state, read symbol) to (new state, write symbol,
+head direction).
+
+\begin{definition}[Computational system]\label{comp-system}
+\lean{CompSystem}
+\leanok
+A computational system $S$ consists of a configuration space $\mathrm{Config}_S$
+and a partial step function $\mathrm{step}_S : \mathrm{Config}_S \to \mathrm{Config}_S$.
+A configuration $c$ \emph{halts} if $\mathrm{step}_S^n(c) = \bot$ for some $n$.
+\end{definition}
+
+\begin{example}[Wolfram's $(2,3)$ TM]\label{wolfram-23-tm}
+\notready
+The smallest known universal Turing machine, with 2 states and 3 colors.
+Smith~\cite{smith2007universality} proved its universality by simulating Rule~110.
+\end{example}
+
+\begin{example}[Rogozhin's small UTMs]\label{rogozhin-utms}
+\notready
+Rogozhin~\cite{rogozhin1996small} cataloged small universal TMs including $(7,4)$,
+$(10,3)$, $(2,18)$, and others, establishing an efficiency frontier in the
+$(n,m)$-plane.
+\end{example}
+
+\section{Cellular Automata}
+
+An elementary cellular automaton (ECA) has 2 colors and nearest-neighbor rule on
+$\ZZ$, parameterized by a rule number $r \in \{0,\ldots,255\}$.
+
+\begin{example}[Rule 110]\label{rule-110}
+\lean{ECA.rule110}
+\leanok
+Cook~\cite{cook2004universality} proved Rule~110 universal by simulating cyclic tag
+systems via glider collisions. Neary and Woods~\cite{neary2006pcompleteness} further
+showed Rule~110 is P-complete.
+\end{example}
+
+\begin{example}[Game of Life]\label{game-of-life}
+\notready
+Rendell~\cite{rendell2002turing} constructed an explicit Turing machine inside the
+Game of Life, with spatial overhead $\sovh \approx 10^3$ cells and constant temporal
+overhead.
+\end{example}
+
+\section{Tag Systems}
+
+A \emph{tag system} $(m, \Sigma, P)$ has deletion number $m$, alphabet $\Sigma$, and
+production rules $P : \Sigma \to \Sigma^*$. At each step: if the word is nonempty,
+read the first symbol $a$, append $P(a)$, and delete the first $m$ symbols.
+
+\begin{example}[Cyclic tag systems]\label{cyclic-tag}
+\notready
+A restricted variant where $\Sigma = \{0,1\}$, $m=1$, and the production rules cycle.
+Cyclic tag systems are universal (they simulate 2-tag systems) and serve as an
+intermediate in many simulation chains.
+\end{example}
+
+\section{Generalized Shifts}
+
+C.~Moore's \emph{generalized shift}~\cite{moore1991generalized} is a stateless
+machine on a bi-infinite tape. At each step a fixed-length window is read, rewritten,
+and shifted. With window 3 and shift $\pm 1$, it coincides with Wolfram's
+\emph{generalized mobile automaton} from NKS Chapter~11.
+
+\section{Planar Billiards}
+
+Miranda and Ramos~\cite{miranda2025billiards} proved that classical two-dimensional
+billiard systems are Turing complete. For each TM $M$, they construct a planar
+billiard table $B$ whose trajectories simulate $M$'s computation.
+
+The encoding uses Topological Kleene Field Theory adapted to billiard flows:
+\begin{enumerate}
+\item The tape state $t$ and head position $k$ are encoded as a single point
+  $x_{t,k} \in [0,1]$ via a Cantor-set-like ternary embedding: tape symbols
+  become ternary digits, head position selects a nested subinterval.
+\item The TM's finite state machine graph is transformed into a billiard table:
+  each state $q_i$ corresponds to a region, each transition edge to a ``corridor.''
+\item Shift (Lemma 1): parabolic walls implement $x_{t,k} \mapsto x_{t,k+1}$
+  via affine maps on the interval.
+\item Read-write (Lemma 2): walls with alternating slopes separate the 0/1
+  subintervals and redirect trajectories to different corridors, implementing
+  the transition function.
+\end{enumerate}
+
+Bennett's reversibility theorem is essential: the billiard construction requires
+the TM to be reversible (injective transition function), and Bennett showed
+every TM has a reversible equivalent.
+
+\begin{remark}[Non-standard overhead]\label{billiard-overhead}
+The TM $\to$ billiard edge has a non-standard overhead: the tape is encoded
+as a single real number ($\sovh$ is not meaningful in the usual sense), and
+$\tovh \approx \oh{|Q|}$ billiard reflections per TM step (one corridor
+traversal with $\oh{|Q|}$ wall reflections). This edge demonstrates that
+our $(\sovh, \tovh)$ framework needs extension for continuous dynamical
+system vertices.
+\end{remark}
+
+\begin{remark}[Formalization difficulty]\label{billiard-formalization}
+Lean formalization of this edge would be very hard: it requires Cantor set
+analysis, billiard dynamics (specular reflection off piecewise-smooth boundaries),
+parabolic mirror geometry, and Bennett's reversibility theorem. A realistic
+partial target: formalize just the ternary encoding $t \mapsto x_t$ and the
+shift map (Lemma 1). Long-term goal only.
+\end{remark}
+
+\section{Other Formalisms}
+
+\begin{itemize}
+\item \textbf{Register machines}: finite-state controller on unbounded integer
+  registers. Simulate TMs with $\oh{1}$ overhead.
+\item \textbf{SK combinators}: the combinatory logic basis $\{S,K\}$ simulates any
+  TM with polynomial overhead.
+\item \textbf{Lambda calculus}: Church-equivalent to TMs by standard results.
+\end{itemize}

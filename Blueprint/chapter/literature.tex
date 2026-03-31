@@ -1,0 +1,21 @@
+\chapter{Known Results from Literature}\label{ch:literature}
+
+\begin{center}
+\begin{tabular}{llllll}
+\toprule
+Source & Target & $\sovh$ & $\tovh$ & Total & Reference \\
+\midrule
+Rule 110 & Cyclic tag & $\sim 20$ & $\oh{n}$ & $\oh{n}$ & Cook 2004 \\
+Cyclic tag & 2-tag & $\oh{1}$ & $\oh{2^n}$ & exp & Cocke--Minsky 1964 \\
+Cyclic tag & Clockwise TM & $\oh{n}$ & $\oh{n}$ & $\oh{n^2}$ & Neary--Woods 2006 \\
+$(2,3)$ TM & Rule 110 & $\oh{w}$ & $\oh{w}$ & $\oh{w^2}$ & Smith 2007 \\
+Game of Life & TM & $\sim 10^3$ & $\oh{1}$ & $\oh{10^3}$ & Rendell 2002 \\
+Register machine & TM & $\oh{1}$ & $\oh{1}$ & $\oh{1}$ & folklore \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Neary--Woods replaced the exponential Cocke--Minsky path with:
+$\mathrm{TM} \xrightarrow{\oh{1}} \mathrm{ClockwiseTM} \xrightarrow{\oh{n}}
+\mathrm{CyclicTag} \xrightarrow{\oh{n}} \mathrm{Rule\;110}$,
+total $\oh{t^2}$. This demonstrates \emph{edge discovery} as a central graph operation.

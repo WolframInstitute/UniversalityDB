@@ -1,0 +1,31 @@
+% Print-specific setup for the Blueprint.
+% This file is not meant to be built. Build print.tex instead.
+
+\usepackage[textwidth=14cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{mathpazo}
+\usepackage{microtype}
+
+% Blueprint annotations (no-ops for print)
+\newcommand{\lean}[1]{}
+\newcommand{\leanok}{}
+\newcommand{\notready}{}
+\newcommand{\uses}[1]{}
+\newcommand{\proves}[1]{}
+\newcommand{\discussion}[1]{}
+
+% Theorem environments
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{question}[theorem]{Question}
+\newtheorem{conjecture}[theorem]{Conjecture}
