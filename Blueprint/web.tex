@@ -1,0 +1,30 @@
+% Web version of the Blueprint (builds interactive HTML + dependency graph).
+% Build: cd Blueprint && leanblueprint web
+% Serve: cd Blueprint && leanblueprint serve
+
+\documentclass{report}
+
+\usepackage{amsmath,amsfonts,amsthm,amssymb}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\DeclareGraphicsExtensions{.svg,.png,.jpg}
+\usepackage[capitalize]{cleveref}
+\usepackage[showmore, dep_graph, project=../Lean]{blueprint}
+
+\usepackage{booktabs}
+
+\input{preamble/common}
+\input{preamble/web}
+
+\github{https://github.com/WolframInstitute/UniversalityDB}
+\home{https://github.com/WolframInstitute/UniversalityDB}
+
+\title{The Universality Graph --- Blueprint}
+\author{Wolfram Institute}
+
+\begin{document}
+\maketitle
+\input{chapter/main}
+\bibliographystyle{alpha}
+\bibliography{references}
+\end{document}

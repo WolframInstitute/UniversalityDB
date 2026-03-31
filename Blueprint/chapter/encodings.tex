@@ -1,0 +1,46 @@
+\chapter{Simulation Encodings}\label{ch:encodings}
+
+\section{The Standard Template}
+
+\begin{definition}[Simulation]\label{simulation-def}
+\lean{CompSystem.Simulation}
+\leanok
+\uses{comp-system}
+A simulation encoding $e : A \to B$ consists of:
+\begin{enumerate}
+\item An \emph{encoding function} $\encode_e : \mathrm{Config}_B \to \mathrm{Config}_A$.
+\item A \emph{decoding function} $\decode_e : \mathrm{Config}_A \to \mathrm{Config}_B$.
+\item A \emph{step correspondence}: $A$ started at $\encode_e(c)$ reaches a
+  configuration from which $\decode_e$ recovers the successor of $c$.
+\end{enumerate}
+\end{definition}
+
+\section{Encoding Overhead}
+
+\begin{definition}[Overhead tuple]\label{overhead-tuple}
+\lean{CompSystem.Overhead}
+\leanok
+\uses{simulation-def}
+Each edge $e : A \to B$ carries $(\sovh_e, \tovh_e)$:
+$\sovh_e(n)$ = spatial overhead (cells of $A$ per cell of $B$),
+$\tovh_e(n)$ = temporal overhead (steps of $A$ per step of $B$).
+\end{definition}
+
+\section{Composition of Encodings}
+
+\begin{proposition}[Composition formula]\label{prop:composition}
+\lean{CompSystem.Overhead.compose}
+\uses{overhead-tuple}
+For $e_1 : A \to B$ and $e_2 : B \to C$, the composed edge $e_2 \circ e_1 : A \to C$:
+\begin{align}
+\sovh_{e_2 \circ e_1}(n) &= \sovh_{e_1}\bigl(\sovh_{e_2}(n)\bigr), \\
+\tovh_{e_2 \circ e_1}(n) &= \tovh_{e_1}\bigl(\sovh_{e_2}(n)\bigr) \cdot \tovh_{e_2}(n).
+\end{align}
+\end{proposition}
+
+\begin{definition}[Scalar weight]\label{scalar-weight}
+\uses{overhead-tuple}
+\notready
+$\wt(e) = \log(\sovh_e \cdot \tovh_e)$ makes composition approximately additive,
+enabling Dijkstra/Bellman--Ford on $\UG$.
+\end{definition}

@@ -1,0 +1,47 @@
+# macOS
+.DS_Store
+
+# Claude settings
+.claude/
+
+# Lean build artifacts
+.lake/
+*.lean.bak
+
+# Wolfram Language
+*.mx
+*.wl.bak
+
+# LaTeX auxiliary
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+
+# Blueprint build output
+Blueprint/web/
+Blueprint/print/
+Blueprint/lean_decls
+Blueprint/*.pdf
+
+# Generated notebooks (from .md sources)
+Notebooks/*.nb
+
+# Personal publish script
+Scripts/publish_notebooks.wls
+
+# Resources: only .md files are tracked; binaries gitignored
+Resources/*.pdf
+Resources/*.nb
+
+# LeanLink submodule build artifacts
+Resources/LeanLink/LeanLink/LibraryResources/
+Resources/LeanLink/Native/build/
+
+# Grant proposal (archived; useful content moved to Resources/)
+GrantProposal/
