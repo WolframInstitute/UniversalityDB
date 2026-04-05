@@ -244,6 +244,108 @@ theorem stepCommutes (machine : TuringMachine.Machine)
     | cons l ls => rfl
 
 -- ============================================================================
+-- Tape normalization: strip trailing (far-end) zeros
+-- ============================================================================
+
+/-- Strip trailing zeros from a list. Since tapes are stored nearest-first,
+    trailing zeros are at the far end (list tail). E.g. [3, 0, 0] → [3],
+    [0, 3, 0] → [0, 3], [0] → [], [] → []. -/
+def normalize : List Nat → List Nat
+  | [] => []
+  | x :: xs =>
+    let tail := normalize xs
+    if tail.isEmpty && x == 0 then [] else x :: tail
+
+@[simp] theorem normalize_nil : normalize ([] : List Nat) = [] := rfl
+
+/-- If normalized tapes agree, prepending the same element preserves agreement. -/
+theorem normalize_cons_congr (x : Nat) (xs ys : List Nat) :
+    normalize xs = normalize ys → normalize (x :: xs) = normalize (x :: ys) := by
+  intro h
+  simp only [normalize]
+  rw [show (normalize xs).isEmpty = (normalize ys).isEmpty from by rw [h]]
+  rw [show normalize xs = normalize ys from h]
+
+/-- The head of a list (defaulting to 0) equals the head of its normalization. -/
+theorem headD_normalize (xs : List Nat) : xs.headD 0 = (normalize xs).headD 0 := by
+  cases xs with
+  | nil => rfl
+  | cons x xs' =>
+    simp only [List.headD, normalize]
+    by_cases h : ((normalize xs').isEmpty && (x == 0)) = true
+    · -- normalize returns [], headD 0 = 0, and x = 0
+      simp only [h, ite_true]
+      simp at h; exact h.2
+    · -- normalize returns x :: _, headD 0 = x
+      rw [if_neg h]
+
+/-- The normalized tail of a list equals the tail of its normalization. -/
+theorem tail_normalize (xs : List Nat) : normalize xs.tail = (normalize xs).tail := by
+  cases xs with
+  | nil => rfl
+  | cons x xs' =>
+    simp only [List.tail_cons, normalize]
+    by_cases h : ((normalize xs').isEmpty && (x == 0)) = true
+    · rw [if_pos h]; simp
+      exact List.isEmpty_iff.mp (Bool.and_eq_true_iff.mp h).1
+    · rw [if_neg h]; simp
+
+/-- If normalized tapes agree, their first elements (defaulting to 0) agree. -/
+theorem normalize_headD_eq (xs ys : List Nat) :
+    normalize xs = normalize ys → xs.headD 0 = ys.headD 0 := by
+  intro h; rw [headD_normalize xs, headD_normalize ys, h]
+
+/-- If normalized tapes agree, the tails' normalizations agree. -/
+theorem normalize_tail_eq (xs ys : List Nat) :
+    normalize xs = normalize ys → normalize xs.tail = normalize ys.tail := by
+  intro h; rw [tail_normalize xs, tail_normalize ys, h]
+
+-- ============================================================================
+-- GS configuration normalization
+-- ============================================================================
+
+def normalizeGSConfig (c : GeneralizedShift.Configuration) : GeneralizedShift.Configuration :=
+  { left := normalize c.left, cells := c.cells, right := normalize c.right }
+
+-- ============================================================================
+-- Generalized step commutation (all configs, up to normalization)
+-- ============================================================================
+
+/-- One BiTM step corresponds to one GS step, up to tape normalization.
+    Requires nonempty tapes; follows directly from `stepCommutes`. -/
+theorem stepCommutesNorm (machine : TuringMachine.Machine)
+    (config config' : BiInfiniteTuringMachine.Configuration)
+    (hq : config.state ≥ 1) (hc : config.head < machine.numberOfSymbols)
+    (hk : machine.numberOfSymbols > 0)
+    (hlne : config.left ≠ []) (hrne : config.right ≠ []) :
+    BiInfiniteTuringMachine.step machine config = some config' →
+    ∃ gsConfig', GeneralizedShift.step (fromBiTM machine) (encodeBiTM machine config) = some gsConfig' ∧
+      normalizeGSConfig gsConfig' = normalizeGSConfig (encodeBiTM machine config') := by
+  intro h_step
+  obtain ⟨state, left, head, right⟩ := config
+  simp only at hlne hrne
+  cases left with
+  | nil => exact absurd rfl hlne
+  | cons lh lt =>
+    cases right with
+    | nil => exact absurd rfl hrne
+    | cons rh rt =>
+      have h := stepCommutes machine state lh lt head rh rt hq hc hk config' h_step
+      exact ⟨encodeBiTM machine config', h, rfl⟩
+
+-- ============================================================================
+-- GS step preserves normalization equivalence
+-- ============================================================================
+
+/-- GS step on equal configs gives equal results (trivial).
+    The general version (norm-equivalent inputs → norm-equivalent outputs)
+    requires proving that GS step only accesses the near end of tapes. -/
+theorem gsStep_congr (gs : GeneralizedShift.Machine)
+    (c1 c2 : GeneralizedShift.Configuration) (h : c1 = c2) :
+    GeneralizedShift.step gs c1 = GeneralizedShift.step gs c2 := by
+  rw [h]
+
+-- ============================================================================
 -- Example: the (2,2) TM
 -- ============================================================================
 
