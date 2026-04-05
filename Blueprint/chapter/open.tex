@@ -1,7 +1,16 @@
 \chapter{Open Questions}\label{ch:open}
 
-\begin{question}\label{q-diameter}
-Diameter of $\UG$ restricted to known universal systems under $\wt$?
+\begin{question}\label{q-gs-tm-sorry}
+\uses{prop:gs-tm}
+Close the remaining \texttt{sorry} in GS~$\to$~TM (Moore Theorem~8). The step
+simulation proof requires three phase lemmas (read, write, shift) composed
+over the \texttt{buildTransition} function.
+\end{question}
+
+\begin{question}\label{q-cocke-minsky}
+\uses{prop:cocke-minsky}
+Prove \texttt{CockeMinskyStepSimulation}: one TM step maps to a bounded number
+of tag steps under the Cocke--Minsky encoding.
 \end{question}
 
 \begin{question}\label{q-polynomial}
@@ -9,9 +18,14 @@ Diameter of $\UG$ restricted to known universal systems under $\wt$?
 Direct polynomial-overhead simulation $\mathrm{Rule\;110} \to \mathrm{TM}(2,3)$?
 \end{question}
 
+\begin{question}\label{q-diameter}
+Diameter of $\UG$ restricted to known universal systems under $\wt$?
+\end{question}
+
 \begin{conjecture}[PCE-motivated]\label{pce-conj}
 \notready
-For any two universal systems $A,B$, there exists a polynomial-overhead path.
+For any two universal systems $A,B$, there exists a polynomial-overhead path
+in~$\UG$.
 \end{conjecture}
 
 \begin{question}\label{q-curvature}
@@ -20,9 +34,11 @@ Ollivier--Ricci curvature of the universal core subgraph?
 
 \begin{question}\label{q-2morph}
 \uses{sim-conjugacy}
-Do 2-morphisms form a nontrivial groupoid? What invariants distinguish proofs?
+Do 2-morphisms between simulation encodings form a nontrivial groupoid?
+What invariants distinguish different proofs of the same simulation?
 \end{question}
 
 \begin{question}\label{q-moore-ex3}
-Is Moore's Example 3 (binary GS, $w=3$) universal?
+\uses{gs-def}
+Is Moore's Example~3 (binary GS, $w=3$) universal?
 \end{question}

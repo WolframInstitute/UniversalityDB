@@ -1,11 +1,15 @@
 \chapter{Higher Structures}\label{ch:higher}
 
 \begin{definition}[Simulation conjugacy]\label{sim-conjugacy}
-\lean{CompSystem.SimConjugacy}
-\leanok
+\notready
 \uses{simulation-def}
-Distinct proofs between the same pair give rise to 2-morphisms. $\UG$ extends
-to a 2-category: objects = systems, 1-morphisms = simulations, 2-morphisms =
-transformations (encoding conjugacy, overhead domination, proof homotopy).
-Connects to HoTT~\cite{hottbook}.
+When two distinct simulation encodings $e_1, e_2 : A \to B$ exist, they
+give rise to 2-morphisms (natural transformations between the encodings).
+$\UG$ extends to a 2-category:
+\begin{itemize}
+\item Objects: computational systems
+\item 1-morphisms: simulation encodings
+\item 2-morphisms: encoding conjugacies, overhead domination, proof homotopies
+\end{itemize}
+This connects to HoTT~\cite{hottbook}: paths in the space of proofs.
 \end{definition}

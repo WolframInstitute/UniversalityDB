@@ -1,46 +1,134 @@
 \chapter{Verified Simulation Edges}\label{ch:verified}
 
-\section{ECA Conjugation Simulations}
+\section{TM to Generalized Shift (Moore Theorem 7)}
 
-The 256 ECAs partition into equivalence classes under mirror ($M$), complement ($C$),
-and $MC$. Each gives a simulation with $\sovh=1$, $\tovh=1$.
-
-\begin{proposition}[Mirror simulation]\label{mirror-sim}
-\lean{ECA.mirror_property, ECA.mirror_sim_steps}
+\begin{proposition}[TM $\to$ GS]\label{prop:tm-gs}
+\lean{TuringMachineToGeneralizedShift.fromBiTM}
+\lean{TuringMachineToGeneralizedShift.stepCommutes}
+\lean{TuringMachineToGeneralizedShift.decodeEncode}
+\lean{TuringMachineToGeneralizedShift.mooreHaltingForward}
 \leanok
-\uses{simulation-def}
-$\mathrm{step}_r(\mathrm{rev}(c)) = \mathrm{rev}(\mathrm{step}_{\bar{r}}(c))$
-for any periodic tape $c$.
+\uses{simulation-def, overhead-def, bi-tm, gs-def}
+Any $(s,k)$ bi-infinite TM is simulated by a generalized shift with
+window width~3, alphabet size $sk+k$, $\sovh = 1$, $\tovh = 1$.
+
+The encoding merges the TM state into the tape cell at the head position:
+the extended alphabet has $k$ passive symbols (no state) and $sk$ active
+symbols encoding (state, color) pairs. The GS window is
+$[\mathrm{left}, \mathrm{active}, \mathrm{right}]$.
+
+Key theorems:
+\begin{itemize}
+\item \texttt{decodeActiveEncodeActive}: alphabet encoding roundtrip
+\item \texttt{decodeEncode}: full configuration roundtrip (nonempty tapes)
+\item \texttt{stepCommutes}: one TM step = one GS step
+\item \texttt{stepCommutesNorm}: step commutation up to tape normalization
+\item \texttt{mooreHaltingForward}: halting preservation
+\end{itemize}
+Fully verified: zero \texttt{sorry}.
 \end{proposition}
 
-Rule 110's class: $\{110, 124, 137, 193\}$.
-Lean: pointwise by \texttt{fin\_cases} + \texttt{decide};
-full theorem by \texttt{native\_decide} for small sizes.
+\section{GS to Turing Machine (Moore Theorem 8)}
 
-\section{Tag System to Turing Machine}
-
-2-tag $\{a \to bc, b \to a, c \to aaa\}$ simulated by a TM via tape sweep.
-$\sovh = 1$, $\tovh = O(n)$. Verified 25 tag steps.
-
-\section{TM $\leftrightarrow$ Generalized Shift (Moore 1991)}
-
-\begin{proposition}[TM $\to$ GS, Moore Theorem 7]\label{prop:tm-gs}
-\lean{TuringMachineToGeneralizedShift.fromBiTM, TuringMachineToGeneralizedShift.stepCommutes, TuringMachineToGeneralizedShift.decodeEncode, TuringMachineToGeneralizedShift.mooreHaltingForward}
-\leanok
-\uses{simulation-def, overhead-tuple}
-Any $(s,k)$ TM is simulated by a GS with window 3, alphabet $sk+k$,
-$\sovh = 1$, $\tovh = 1$.
-The encoding merges state into the cell under the head:
-symbol $k + (q-1)k + c$ = state $q$ reading color $c$.
-Fully verified in Lean with zero \texttt{sorry}.
-\end{proposition}
-
-\begin{proposition}[GS $\to$ TM, Moore Theorem 8]\label{prop:gs-tm}
-\lean{GeneralizedShiftToTuringMachine.toBiTM, GeneralizedShiftToTuringMachine.buildTransition}
+\begin{proposition}[GS $\to$ TM]\label{prop:gs-tm}
+\lean{GeneralizedShiftToTuringMachine.toBiTM}
+\lean{GeneralizedShiftToTuringMachine.buildTransition}
+\lean{GeneralizedShiftToTuringMachine.decodeConfig_encodeConfig}
 \notready
-\uses{simulation-def, overhead-tuple}
-Any GS with window $w$ and max shift $m$ is simulated by a TM with
-$\sovh = 1$, $\tovh \leq 2(w-1) + m$.
-The TM uses read/write/shift phases to simulate one GS step.
-Construction defined in Lean; step simulation proof pending.
+\uses{simulation-def, overhead-def, bi-tm, gs-def}
+Any GS with window width $w$ and max shift magnitude $m$ is simulated by a
+bi-infinite TM with $\sovh = 1$, $\tovh \leq 2(w-1) + m$.
+
+The TM executes in three phases per GS step:
+\begin{enumerate}
+\item Read phase ($w-1$ steps): scan right, accumulate window contents in
+  state encoding.
+\item Write phase ($w-1$ steps): write replacement symbols right-to-left.
+\item Shift phase ($\leq m$ steps): move head to match GS shift.
+\end{enumerate}
+
+Proved: window encoding roundtrip (\texttt{decodeWindow\_encodeWindow}),
+configuration roundtrip (\texttt{decodeConfig\_encodeConfig}).
+Pending: step simulation for the active case (\texttt{stepSimulation\_w1},
+1~\texttt{sorry}).
 \end{proposition}
+
+\section{ECA Rule 110 and Rule 124 (Mirror)}
+
+\begin{proposition}[ECA mirror bisimulation]\label{mirror-sim}
+\lean{mirrorProperty, mirrorSimulationSteps}
+\leanok
+\uses{simulation-def, eca-def}
+Rule~110 and Rule~124 are related by tape reversal, giving a bisimulation with
+$\sovh = 1$, $\tovh = 1$.
+
+The identity $\mathrm{rule110}(a,b,c) = \mathrm{rule124}(c,b,a)$ holds for all
+$a,b,c \in \{0,1\}$ (\texttt{mirrorProperty}, by \texttt{fin\_cases} +
+\texttt{decide}).
+\texttt{reverseTapeInvolutive}: double reversal is identity.
+\texttt{mirrorSimulationGeneral}: one step commutes with reversal.
+\texttt{mirrorSimulationSteps}: $k$ steps commute with reversal.
+Fully verified: zero \texttt{sorry}.
+\end{proposition}
+
+\section{2-Tag to Cyclic Tag System (Cook 2004)}
+
+\begin{proposition}[Tag $\to$ CTS]\label{prop:tag-cts}
+\lean{tagToCyclicTagSystem}
+\lean{tagToCyclicTagSystemSimulation}
+\lean{tagToCyclicTagSystemHaltingForward}
+\lean{cyclicTagSystemToTagHalting}
+\leanok
+\uses{simulation-def, tag-def, cts-def}
+Any 2-tag system with alphabet size $k$ is simulated by a cyclic tag system
+with $2k$ appendants. One tag step corresponds to exactly $2k$ CTS steps.
+
+The encoding maps each symbol $i \in \{0,\ldots,k-1\}$ to a one-hot binary
+word of length $k$ (1 at position $i$, 0 elsewhere). The CTS has $k$
+appendants encoding the tag productions and $k$ empty appendants.
+
+Key theorems:
+\begin{itemize}
+\item \texttt{tagToCyclicTagSystemSimulation}: 1 tag step = $2k$ CTS steps
+\item \texttt{tagToCyclicTagSystemHaltingForward}: tag halts $\Rightarrow$ CTS halts
+\item \texttt{cyclicTagSystemToTagHalting}: CTS halts $\Rightarrow$ tag halts
+\end{itemize}
+Fully verified in both directions: zero \texttt{sorry}.
+\end{proposition}
+
+\section{The Cocke--Minsky Chain}
+
+\begin{proposition}[TM $\to$ Tag $\to$ CTS]\label{prop:cocke-minsky}
+\lean{cockeMinskyTag}
+\lean{cockeMinskyConfigurationEncode}
+\lean{turingMachineToCyclicTagSystem}
+\uses{simulation-def, bi-tm, tag-def, cts-def, prop:tag-cts}
+\notready
+The Cocke--Minsky encoding maps any TM to a 2-tag system with alphabet
+size $sk + k + 1$, using markers $A(q,a)$ for state-symbol pairs, $B(a)$
+for tape cells, and $C$ as separator.
+
+The composition \texttt{turingMachineToCyclicTagSystem} chains
+TM~$\to$~Tag~$\to$~CTS. The halting correspondence
+(\texttt{cockeMinskyHaltingForward}) is fully proved, but the step simulation
+(\texttt{CockeMinskyStepSimulation}) remains a hypothesis.
+\end{proposition}
+
+\section{Main Universality Theorem}
+
+\begin{theorem}[Wolfram's $(2,3)$ TM is universal]\label{thm:wolfram23}
+\lean{wolfram23Universal}
+\uses{prop:cocke-minsky, wolfram-23-tm}
+\notready
+For any TM $M$ and initial configuration $c$, there exists a configuration of
+Wolfram's $(2,3)$ machine that simulates the computation of $M$ on $c$.
+
+The proof composes:
+TM $\xrightarrow{\text{Cocke--Minsky}}$ 2-Tag
+$\xrightarrow{\text{Cook}}$ CTS
+$\xrightarrow{\text{Smith}}$ TM(2,3).
+
+Currently requires two hypotheses:
+\texttt{CockeMinskyStepSimulation} (TM $\to$ Tag step binding) and
+\texttt{SmithSimulation} (CTS $\to$ TM(2,3) via Smith's 6-level hierarchy).
+\end{theorem}
