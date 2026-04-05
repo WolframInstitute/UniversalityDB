@@ -1,7 +1,5 @@
 # ECA Rule 110 ↔ Rule 124 (Tape Reversal)
 
-> Status: **draft**
-
 A bisimulation between elementary cellular automata Rule 110 and Rule 124 via tape reversal. Overhead: σ=1, τ=1.
 
 ## Encoding

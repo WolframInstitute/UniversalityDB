@@ -1,7 +1,5 @@
 # Elementary Cellular Automaton
 
-> Status: **draft**
-
 An elementary cellular automaton (ECA) is a 1D cellular automaton with 2 states and nearest-neighbor interactions. Each of the 256 rules is identified by a Wolfram rule number encoding the 8-entry lookup table.
 
 ## Lean formalization

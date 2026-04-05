@@ -1,7 +1,5 @@
 # Overhead
 
-> Status: **draft**
-
 Overhead quantifies the cost of a simulation encoding. It has two components: spatial (how much larger the encoded configuration is) and temporal (how many steps of the simulator per step of the simulated system).
 
 ## Lean definition

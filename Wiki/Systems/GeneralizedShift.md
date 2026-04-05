@@ -1,7 +1,5 @@
 # Generalized Shift
 
-> Status: **draft**
-
 Introduced by Moore (1991) as a dynamical systems model equivalent to Turing machines. A generalized shift operates on a bi-infinite tape by reading a window of w cells, replacing the window contents, and shifting the window by some magnitude in a given direction.
 
 ## Definition

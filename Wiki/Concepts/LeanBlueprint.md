@@ -1,7 +1,5 @@
 # Lean Blueprint
 
-> Status: **draft**
-
 The project uses a Lean Blueprint (PFR-style) to provide a human-readable overview of the formalization with dependency tracking. Lives in `Blueprint/`.
 
 ## Structure

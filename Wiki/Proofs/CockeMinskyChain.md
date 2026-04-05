@@ -1,7 +1,5 @@
 # Cocke-Minsky Chain: TM → Tag → CTS → (2,3) TM
 
-> Status: **draft**
-
 The central universality chain proving Wolfram's (2,3) Turing machine is computationally universal. The chain composes three simulation encodings.
 
 ## The chain

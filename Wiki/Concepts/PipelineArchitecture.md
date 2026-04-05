@@ -1,7 +1,5 @@
 # Pipeline Architecture
 
-> Status: **draft**
-
 The LLM pipeline for automatically expanding the universality graph. Not yet implemented — this is the design document for a future stage.
 
 ## Operations

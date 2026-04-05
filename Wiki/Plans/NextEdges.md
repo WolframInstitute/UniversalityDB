@@ -1,7 +1,5 @@
 # Plan: Next Edges to Formalize
 
-> Status: **draft**
-
 ## Goal
 
 Decide which simulation proofs to formalize next after completing TM ↔ GS.

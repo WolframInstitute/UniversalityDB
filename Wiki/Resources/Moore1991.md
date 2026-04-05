@@ -1,7 +1,5 @@
 # Moore 1991 — Generalized Shifts
 
-> Status: **draft**
-
 Cristopher Moore. *Generalized Shifts: Unpredictability and Undecidability in Dynamical Systems.* Nonlinearity 4, 199-230, 1991.
 
 ## Summary
@@ -13,7 +11,10 @@ Introduces generalized shifts as a dynamical systems model and proves their equi
 - **Theorem 7:** Any TM is conjugate to a generalized shift via state-into-tape encoding. Extended alphabet size = s*k + k, windowWidth = 3. Overhead: σ=1, τ=1.
 - **Theorem 8:** Any generalized shift can be simulated by a TM. Three-phase construction (read/write/shift). Overhead: σ=1, τ = O(w) where w = window width.
 
+## Recover
+
 Download: https://doi.org/10.1088/0951-7715/4/2/002
+Target: Resources/Moore1991.pdf
 
 ## Use in this project
 

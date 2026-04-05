@@ -1,7 +1,5 @@
 # Computational Machine
 
-> Status: **draft**
-
 The base abstraction in the universality graph. A computational machine is a pair of a configuration type and a step function that either returns a new configuration or halts (returns `none`).
 
 ## Lean definition

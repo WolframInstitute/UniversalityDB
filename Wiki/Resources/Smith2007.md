@@ -1,7 +1,5 @@
 # Smith 2007 — Universality of the (2,3) TM
 
-> Status: **draft**
-
 Alex Smith. *Universality of Wolfram's 2,3 Turing Machine.* Wolfram Science Prize submission, 2007.
 
 ## Summary
@@ -14,7 +12,10 @@ Proves that the (2,3) Turing machine (2 states, 3 colors) is computationally uni
 - Simulation has exponential overhead due to the reduction chain.
 - Builds on Cook's Rule 110 universality.
 
+## Recover
+
 Download: https://www.wolframscience.com/prizes/tm23/TM23Proof.pdf
+Target: Resources/Smith2007.pdf
 
 ## Use in this project
 

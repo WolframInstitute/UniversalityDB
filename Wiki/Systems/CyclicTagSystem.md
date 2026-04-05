@@ -1,7 +1,5 @@
 # Cyclic Tag System
 
-> Status: **draft**
-
 A cyclic tag system (CTS) operates on a binary word. It cycles through a fixed list of appendant words. At each step: remove the first bit; if it was 1, append the current appendant. Advance the phase counter (mod number of appendants). Halts when the word is empty.
 
 ## Lean formalization
