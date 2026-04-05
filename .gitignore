@@ -35,13 +35,18 @@ Notebooks/*.nb
 # Personal publish script
 Scripts/publish_notebooks.wls
 
-# Resources: only .md files are tracked; binaries gitignored
-Resources/*.pdf
-Resources/*.nb
+# Resources: on-demand local directory for binaries (PDFs, notebooks)
+# Summaries live in Wiki/Papers/. Only submodules are tracked.
+Resources/*
+!Resources/LeanLink/
+!Resources/TuringMachine/
 
 # LeanLink submodule build artifacts
 Resources/LeanLink/LeanLink/LibraryResources/
 Resources/LeanLink/Native/build/
+
+# Guided tour (local, session-specific)
+Tour/
 
 # Grant proposal (archived; useful content moved to Resources/)
 GrantProposal/
