@@ -1,0 +1,21 @@
+# Neary & Woods 2006 — P-Completeness of Rule 110
+
+> Status: **draft**
+
+Turlough Neary and Damien Woods. *P-completeness of Cellular Automaton Rule 110.* ICALP 2006, LNCS 4051.
+
+## Summary
+
+Provides an alternative proof that Rule 110 is universal with polynomial overhead, improving on Cook's exponential bound. The chain: generic TM → clockwise TM → cyclic tag → Rule 110, with each step having polynomial overhead.
+
+Download: https://doi.org/10.1007/11786986_13
+
+## Use in this project
+
+Not yet formalized. A potential future edge with better overhead bounds than the Cook/Smith path.
+
+## See also
+
+- [[Cook2004]] — the original Rule 110 universality
+- [[ElementaryCellularAutomaton]] — the system
+- [[WoodsNeary2009]] — survey of small UTMs by the same authors
