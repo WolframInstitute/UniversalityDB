@@ -19,6 +19,10 @@ The project also explores whether LLMs can autonomously push the boundary of res
 | Cocke–Minsky Chain (TM → Tag → CTS → (2,3) TM) | [Wiki/Notebooks/CockeMinsky.md](Wiki/Notebooks/CockeMinsky.md) | [Cloud](https://www.wolframcloud.com/obj/hajek_pavel@outlook.de/UniversalityGraph/CockeMinsky.nb) |
 | The Universality Graph | [Wiki/Notebooks/UniversalityGraph.md](Wiki/Notebooks/UniversalityGraph.md) | [Cloud](https://www.wolframcloud.com/obj/hajek_pavel@outlook.de/UniversalityGraph/UniversalityGraph.nb) |
 
+## 📖 Wiki
+
+Browse the **[knowledge base](Wiki/Index.md)** for articles on every system, proof, and resource in the project.
+
 ## 🔨 Build Instructions
 
 ```bash
