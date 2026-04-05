@@ -21,6 +21,6 @@ Key theorems:
 
 ## See also
 
-- [[CockeMinskyChain]] — the full TM → (2,3) TM chain
-- [[TagSystem]], [[CyclicTagSystem]] — the systems
-- [[Cook2004]] — Rule 110 universality (uses this encoding)
+- [CockeMinskyChain](CockeMinskyChain.md) — the full TM → (2,3) TM chain
+- [TagSystem](../Systems/TagSystem.md), [CyclicTagSystem](../Systems/CyclicTagSystem.md) — the systems
+- [Cook2004](../Resources/Cook2004.md) — Rule 110 universality (uses this encoding)

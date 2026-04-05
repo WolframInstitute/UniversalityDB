@@ -22,5 +22,5 @@ Both theorems are formalized in Lean. Theorem 7 is fully proved (0 sorry). Theor
 
 ## See also
 
-- [[TMtoGS]], [[GStoTM]] — the formalizations
-- [[GeneralizedShift]] — the system
+- [TMtoGS](../Proofs/TMtoGS.md), [GStoTM](../Proofs/GStoTM.md) — the formalizations
+- [GeneralizedShift](../Systems/GeneralizedShift.md) — the system

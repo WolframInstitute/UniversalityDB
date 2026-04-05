@@ -6,7 +6,7 @@ The central universality chain proving Wolfram's (2,3) Turing machine is computa
 
 1. **TM → 2-Tag** (Cocke-Minsky 1964): Tag alphabet size = s*k + k + 1. Markers A(q,a) encode state-symbol pairs, B(a) encode tape cells, C is a separator. One TM step maps to a bounded number of tag steps. Currently a hypothesis (`CockeMinskyStepSimulation`).
 
-2. **2-Tag → CTS** (Cook 2004): One-hot binary encoding. 2k appendants. 1 tag step = 2k CTS steps. **Fully proved** — see [[TagToCTS]].
+2. **2-Tag → CTS** (Cook 2004): One-hot binary encoding. 2k appendants. 1 tag step = 2k CTS steps. **Fully proved** — see [TagToCTS](TagToCTS.md).
 
 3. **CTS → (2,3) TM** (Smith 2007): Smith's 6-level simulation hierarchy. Currently a hypothesis (`SmithSimulation`).
 
@@ -20,6 +20,6 @@ Halting correspondence (`cockeMinskyHaltingForward`, `cockeMinskyHaltedImpliesTa
 
 ## See also
 
-- [[TagToCTS]] — the fully proved middle link
-- [[TuringMachine]], [[TagSystem]], [[CyclicTagSystem]] — the systems
-- [[Smith2007]], [[Cook2004]] — the papers
+- [TagToCTS](TagToCTS.md) — the fully proved middle link
+- [TuringMachine](../Systems/TuringMachine.md), [TagSystem](../Systems/TagSystem.md), [CyclicTagSystem](../Systems/CyclicTagSystem.md) — the systems
+- [Smith2007](../Resources/Smith2007.md), [Cook2004](../Resources/Cook2004.md) — the papers

@@ -17,4 +17,4 @@ Potential future vertex: PlanarBilliard as a continuous physical system in the u
 
 ## See also
 
-- [[TuringMachine]] — the simulated system
+- [TuringMachine](../Systems/TuringMachine.md) — the simulated system

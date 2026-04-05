@@ -15,5 +15,5 @@ LLM proposes Lean code → Wolfram pre-checks on finite examples → Lean type-c
 
 ## See also
 
-- [[SimulationEncoding]] — what gets produced
-- [[Polu2020]], [[Zheng2025]] — LLM theorem proving background
+- [SimulationEncoding](SimulationEncoding.md) — what gets produced
+- [Polu2020](../Resources/Polu2020.md), [Zheng2025](../Resources/Zheng2025.md) — LLM theorem proving background

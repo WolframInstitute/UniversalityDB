@@ -184,10 +184,10 @@ Body. Use subsections as needed.
 
 ## See also
 
-- [[OtherArticle]] — why it's related
+- [OtherArticle](../Folder/OtherArticle.md) — why it's related
 ```
 
-Backlinks use `[[Name]]` wiki-link syntax (renders as plain text on GitHub, clickable in Obsidian/VS Code wiki extensions). Keep articles concise — encyclopedia-style, not exhaustive.
+Backlinks use **relative markdown links** so they are clickable on GitHub. Same-folder links: `[Name](Name.md)`. Cross-folder links: `[Name](../Folder/Name.md)`. Keep articles concise — encyclopedia-style, not exhaustive.
 
 ### How the LLM maintains the wiki
 
