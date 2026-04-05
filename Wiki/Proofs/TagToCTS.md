@@ -1,7 +1,5 @@
 # 2-Tag System → Cyclic Tag System (Cook 2004)
 
-> Status: **draft**
-
 Cook's encoding reduces any 2-tag system to a cyclic tag system. This is the fully proved middle link in the Cocke-Minsky chain.
 
 ## Encoding

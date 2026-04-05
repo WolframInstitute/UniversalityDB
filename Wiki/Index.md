@@ -1,6 +1,6 @@
 # Wiki Index
 
-Knowledge base for the Universality Graph project. Updated by the LLM after each substantial step. All articles are **draft** until reviewed by a human — see revision workflow in CLAUDE.md.
+Knowledge base for the Universality Graph project. Maintained by the LLM after each substantial step.
 
 ## Status & Log
 
@@ -11,6 +11,7 @@ Knowledge base for the Universality Graph project. Updated by the LLM after each
 
 - [Current Focus](Plans/CurrentFocus.md) — closing GS → TM last sorry
 - [Next Edges](Plans/NextEdges.md) — candidates for the next formalization target
+- [Computational Research Plugin](Plans/ComputationalResearchPlugin.md) — extracting wiki/tour/resource workflow into the plugin
 
 ## Tour
 
@@ -39,6 +40,12 @@ Interactive guided walk through the project — say **"start tour"** to begin. T
 - [Overhead](Concepts/Overhead.md) — spatial and temporal cost of simulation
 - [Pipeline Architecture](Concepts/PipelineArchitecture.md) — LLM pipeline for auto-expanding the graph (future)
 - [Lean Blueprint](Concepts/LeanBlueprint.md) — PFR-style blueprint with `\lean{}` annotations
+
+## Notebooks
+
+- [TM ↔ GS](Notebooks/TM_GS.md) — Moore 1991, TM ↔ Generalized Shift demonstration
+- [Cocke-Minsky Chain](Notebooks/CockeMinsky.md) — TM → Tag → CTS → (2,3) TM
+- [Universality Graph](Notebooks/UniversalityGraph.md) — graph exploration and visualization
 
 ## Resources (papers, repos, tools)
 

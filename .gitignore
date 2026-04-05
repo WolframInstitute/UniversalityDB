@@ -29,8 +29,8 @@ Blueprint/print/
 Blueprint/lean_decls
 Blueprint/*.pdf
 
-# Generated notebooks (from .md sources)
-Notebooks/*.nb
+# Generated notebooks (from Wiki/Notebooks/*.md sources)
+Notebooks/
 
 # Personal publish script
 Scripts/publish_notebooks.wls

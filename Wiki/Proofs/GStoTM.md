@@ -1,7 +1,5 @@
 # GS → Turing Machine (Moore Theorem 8)
 
-> Status: **draft**
-
 Any generalized shift can be simulated by a bi-infinite Turing machine with σ=1, τ≤2(w-1)+m where w is the window width and m is the maximum shift magnitude.
 
 ## Encoding

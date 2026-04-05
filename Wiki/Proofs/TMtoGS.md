@@ -1,7 +1,5 @@
 # TM → Generalized Shift (Moore Theorem 7)
 
-> Status: **draft**
-
 Any Turing machine can be simulated by a generalized shift with σ=1, τ=1 (a bisimulation).
 
 ## Encoding

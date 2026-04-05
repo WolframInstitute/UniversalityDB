@@ -1,7 +1,5 @@
 # Plan: Current Focus
 
-> Status: **draft**
-
 ## Goal
 
 Close the remaining sorry in GS → TM (Moore Theorem 8) step simulation, completing the bidirectional TM ↔ GS equivalence.

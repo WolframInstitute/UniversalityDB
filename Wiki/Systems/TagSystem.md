@@ -1,7 +1,5 @@
 # Tag System
 
-> Status: **draft**
-
 A tag system operates on a finite word over an alphabet of size k. At each step it reads the first symbol, appends the corresponding production word to the end, and deletes the first 2 symbols (for a 2-tag system). Halts when the word length drops below 2.
 
 ## Lean formalization

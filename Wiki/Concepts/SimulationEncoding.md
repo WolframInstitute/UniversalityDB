@@ -1,7 +1,5 @@
 # Simulation Encoding
 
-> Status: **draft**
-
 A simulation encoding is a morphism between two computational machines: it certifies that machine A can simulate machine B. This is the edge type in the universality graph.
 
 ## Lean definition

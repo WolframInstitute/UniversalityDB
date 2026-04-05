@@ -1,7 +1,5 @@
 # Turing Machine
 
-> Status: **draft**
-
 The standard model of computation. A finite-state head reads and writes symbols on a tape, moving left or right at each step. State 0 is the halt state.
 
 ## Lean formalization

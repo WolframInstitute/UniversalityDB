@@ -11,13 +11,13 @@ The project also explores whether LLMs can autonomously push the boundary of res
 - 📚 **Knowledge base** — a growing structured knowledge of the previous work (universality graph)
 - 🧠 **Expert guidance** — high-level guidance by mathematicians and AI researchers at the Wolfram Institute
 
-## 📓 Presentation Notebooks
+## 📓 Notebooks
 
-> **Note:** These notebooks predate the current Lean formalization and may not reflect the latest machine definitions and proofs. They will be updated in a future release.
-
-- [TM ↔ Generalized Shift](https://www.wolframcloud.com/obj/hajek_pavel@outlook.de/UniversalityGraph/TM_GS.nb) — Moore 1991
-- [Cocke–Minsky Chain](https://www.wolframcloud.com/obj/hajek_pavel@outlook.de/UniversalityGraph/CockeMinsky.nb) — TM → Tag → CTS → (2,3) TM
-- [The Universality Graph](https://www.wolframcloud.com/obj/hajek_pavel@outlook.de/UniversalityGraph/UniversalityGraph.nb)
+| Notebook | Source | Cloud |
+|---|---|---|
+| TM ↔ Generalized Shift (Moore 1991) | [Wiki/Notebooks/TM_GS.md](Wiki/Notebooks/TM_GS.md) | [Cloud](https://www.wolframcloud.com/obj/hajek_pavel@outlook.de/UniversalityGraph/TM_GS.nb) |
+| Cocke–Minsky Chain (TM → Tag → CTS → (2,3) TM) | [Wiki/Notebooks/CockeMinsky.md](Wiki/Notebooks/CockeMinsky.md) | [Cloud](https://www.wolframcloud.com/obj/hajek_pavel@outlook.de/UniversalityGraph/CockeMinsky.nb) |
+| The Universality Graph | [Wiki/Notebooks/UniversalityGraph.md](Wiki/Notebooks/UniversalityGraph.md) | [Cloud](https://www.wolframcloud.com/obj/hajek_pavel@outlook.de/UniversalityGraph/UniversalityGraph.nb) |
 
 ## 🔨 Build Instructions
 
