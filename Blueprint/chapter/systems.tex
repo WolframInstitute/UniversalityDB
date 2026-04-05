@@ -1,119 +1,108 @@
 \chapter{Computational Systems}\label{ch:systems}
 
+\begin{definition}[Computational machine]\label{comp-system}
+\lean{ComputationalMachine}
+\leanok
+A computational machine $M$ consists of a configuration type $\mathrm{Config}_M$
+and a partial step function $\mathrm{step}_M : \mathrm{Config}_M \to
+\mathrm{Config}_M \cup \{\bot\}$.
+A configuration $c$ \emph{halts} if $\mathrm{step}_M^n(c) = \bot$ for some $n$.
+\end{definition}
+
 \section{Turing Machines}
 
-A Turing machine $\mathrm{TM}(n,m)$ has $n$ states and $m$ colors (tape symbols).
-The transition function maps (state, read symbol) to (new state, write symbol,
-head direction).
+A Turing machine $\mathrm{TM}(s,k)$ has $s$ states and $k$ symbols.
+The transition function maps (state, symbol) to (new state, write symbol,
+head direction). State~0 is the halt state.
 
-\begin{definition}[Computational system]\label{comp-system}
-\lean{CompSystem}
+\begin{definition}[One-sided TM]\label{one-sided-tm}
+\lean{TuringMachine.Machine}
+\lean{TuringMachine.decodeRule}
 \leanok
-A computational system $S$ consists of a configuration space $\mathrm{Config}_S$
-and a partial step function $\mathrm{step}_S : \mathrm{Config}_S \to \mathrm{Config}_S$.
-A configuration $c$ \emph{halts} if $\mathrm{step}_S^n(c) = \bot$ for some $n$.
+\uses{comp-system}
+A TM parameterized by \texttt{numberOfStates} and \texttt{numberOfSymbols}.
+\texttt{decodeRule} converts a Wolfram-style rule number to explicit transitions,
+enabling systematic enumeration of all $(s,k)$ machines.
+\end{definition}
+
+\begin{definition}[Bi-infinite TM]\label{bi-tm}
+\lean{BiInfiniteTuringMachine.Configuration}
+\lean{BiInfiniteTuringMachine.step}
+\leanok
+\uses{comp-system}
+Configuration = (state, left tape, head symbol, right tape) on a bi-infinite
+tape. Includes \texttt{evaluate} (fuel-bounded), \texttt{exactSteps}, and
+\texttt{Halts}. Used for simulation proofs.
 \end{definition}
 
 \begin{example}[Wolfram's $(2,3)$ TM]\label{wolfram-23-tm}
-\notready
-The smallest known universal Turing machine, with 2 states and 3 colors.
-Smith~\cite{smith2007universality} proved its universality by simulating Rule~110.
-\end{example}
-
-\begin{example}[Rogozhin's small UTMs]\label{rogozhin-utms}
-\notready
-Rogozhin~\cite{rogozhin1996small} cataloged small universal TMs including $(7,4)$,
-$(10,3)$, $(2,18)$, and others, establishing an efficiency frontier in the
-$(n,m)$-plane.
-\end{example}
-
-\section{Cellular Automata}
-
-An elementary cellular automaton (ECA) has 2 colors and nearest-neighbor rule on
-$\ZZ$, parameterized by a rule number $r \in \{0,\ldots,255\}$.
-
-\begin{example}[Rule 110]\label{rule-110}
-\lean{ECA.rule110}
+\lean{BiInfiniteTuringMachine.wolfram23}
 \leanok
-Cook~\cite{cook2004universality} proved Rule~110 universal by simulating cyclic tag
-systems via glider collisions. Neary and Woods~\cite{neary2006pcompleteness} further
-showed Rule~110 is P-complete.
+\uses{bi-tm}
+The smallest known universal Turing machine: 2 states, 3 symbols, 6 transition
+rules. Verified to run 10 and 20 steps from the standard initial configuration
+(\texttt{wolfram23Runs10}, \texttt{wolfram23Runs20}).
+Smith~\cite{smith2007universality} proved its universality.
 \end{example}
 
-\begin{example}[Game of Life]\label{game-of-life}
-\notready
-Rendell~\cite{rendell2002turing} constructed an explicit Turing machine inside the
-Game of Life, with spatial overhead $\sovh \approx 10^3$ cells and constant temporal
-overhead.
-\end{example}
+\section{Elementary Cellular Automata}
+
+An elementary cellular automaton (ECA) has 2 states and nearest-neighbor rule on
+a periodic tape, parameterized by a rule number $r \in \{0,\ldots,255\}$.
+
+\begin{definition}[ECA]\label{eca-def}
+\lean{ruleTable, step}
+\leanok
+\uses{comp-system}
+\texttt{ruleTable} converts a rule number and 3-cell neighborhood to an output
+bit. \texttt{step} applies the rule to all cells in parallel on a periodic tape
+of size $n$. Built-in rules: \texttt{rule110}, \texttt{rule124}, \texttt{rule137}.
+\end{definition}
 
 \section{Tag Systems}
 
-A \emph{tag system} $(m, \Sigma, P)$ has deletion number $m$, alphabet $\Sigma$, and
-production rules $P : \Sigma \to \Sigma^*$. At each step: if the word is nonempty,
-read the first symbol $a$, append $P(a)$, and delete the first $m$ symbols.
+\begin{definition}[2-tag system]\label{tag-def}
+\lean{Tag, Tag.step, Tag.Halts}
+\leanok
+\uses{comp-system}
+A 2-tag system with alphabet of size $k$ and production function
+$P : \mathrm{Fin}(k) \to \mathrm{Fin}(k)^*$. At each step:
+read the first symbol $a$, append $P(a)$, delete the first 2 symbols.
+Halts when the word length drops below~2.
+\end{definition}
 
-\begin{example}[Cyclic tag systems]\label{cyclic-tag}
-\notready
-A restricted variant where $\Sigma = \{0,1\}$, $m=1$, and the production rules cycle.
-Cyclic tag systems are universal (they simulate 2-tag systems) and serve as an
-intermediate in many simulation chains.
-\end{example}
+\begin{definition}[Cyclic tag system]\label{cts-def}
+\lean{CyclicTagSystem}
+\lean{CyclicTagSystem.step}
+\lean{CyclicTagSystem.Halts}
+\leanok
+\uses{comp-system}
+Binary data with a cyclic list of appendants. At each step: remove the first
+bit; if it was~1, append the current appendant; advance the phase (mod number
+of appendants). Halts when the data is empty.
+\end{definition}
 
 \section{Generalized Shifts}
 
-C.~Moore's \emph{generalized shift}~\cite{moore1991generalized} is a stateless
-machine on a bi-infinite tape. At each step a fixed-length window is read, rewritten,
-and shifted. With window 3 and shift $\pm 1$, it coincides with Wolfram's
-\emph{generalized mobile automaton} from NKS Chapter~11.
-
-\section{Planar Billiards}
-
-Miranda and Ramos~\cite{miranda2025billiards} proved that classical two-dimensional
-billiard systems are Turing complete. For each TM $M$, they construct a planar
-billiard table $B$ whose trajectories simulate $M$'s computation.
-
-The encoding uses Topological Kleene Field Theory adapted to billiard flows:
-\begin{enumerate}
-\item The tape state $t$ and head position $k$ are encoded as a single point
-  $x_{t,k} \in [0,1]$ via a Cantor-set-like ternary embedding: tape symbols
-  become ternary digits, head position selects a nested subinterval.
-\item The TM's finite state machine graph is transformed into a billiard table:
-  each state $q_i$ corresponds to a region, each transition edge to a ``corridor.''
-\item Shift (Lemma 1): parabolic walls implement $x_{t,k} \mapsto x_{t,k+1}$
-  via affine maps on the interval.
-\item Read-write (Lemma 2): walls with alternating slopes separate the 0/1
-  subintervals and redirect trajectories to different corridors, implementing
-  the transition function.
-\end{enumerate}
-
-Bennett's reversibility theorem is essential: the billiard construction requires
-the TM to be reversible (injective transition function), and Bennett showed
-every TM has a reversible equivalent.
-
-\begin{remark}[Non-standard overhead]\label{billiard-overhead}
-The TM $\to$ billiard edge has a non-standard overhead: the tape is encoded
-as a single real number ($\sovh$ is not meaningful in the usual sense), and
-$\tovh \approx \oh{|Q|}$ billiard reflections per TM step (one corridor
-traversal with $\oh{|Q|}$ wall reflections). This edge demonstrates that
-our $(\sovh, \tovh)$ framework needs extension for continuous dynamical
-system vertices.
-\end{remark}
-
-\begin{remark}[Formalization difficulty]\label{billiard-formalization}
-Lean formalization of this edge would be very hard: it requires Cantor set
-analysis, billiard dynamics (specular reflection off piecewise-smooth boundaries),
-parabolic mirror geometry, and Bennett's reversibility theorem. A realistic
-partial target: formalize just the ternary encoding $t \mapsto x_t$ and the
-shift map (Lemma 1). Long-term goal only.
-\end{remark}
+\begin{definition}[Generalized shift]\label{gs-def}
+\lean{GeneralizedShift.Machine}
+\lean{GeneralizedShift.step}
+\leanok
+\uses{comp-system}
+Moore's generalized shift~\cite{moore1991generalized}: a stateless machine on a
+bi-infinite tape with alphabet size $n$ and window width $w$. At each step:
+read the $w$-cell window; if active, replace the window contents, shift the
+window by some magnitude in a given direction. Inactive windows halt.
+\end{definition}
 
 \section{Other Formalisms}
 
+Not yet formalized:
 \begin{itemize}
 \item \textbf{Register machines}: finite-state controller on unbounded integer
   registers. Simulate TMs with $\oh{1}$ overhead.
-\item \textbf{SK combinators}: the combinatory logic basis $\{S,K\}$ simulates any
-  TM with polynomial overhead.
-\item \textbf{Lambda calculus}: Church-equivalent to TMs by standard results.
+\item \textbf{Planar billiards}: Miranda--Ramos~\cite{miranda2025billiards}:
+  billiard trajectories simulate TMs with $\tovh = \oh{|Q|}$.
+\item \textbf{Game of Life}: Rendell~\cite{rendell2002turing}: explicit TM
+  construction with $\sovh \approx 10^3$.
 \end{itemize}

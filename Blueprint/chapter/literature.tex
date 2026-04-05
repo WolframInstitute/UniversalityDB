@@ -1,21 +1,30 @@
 \chapter{Known Results from Literature}\label{ch:literature}
 
+The following simulation edges are known from the literature but not yet
+fully formalized in Lean. Edge direction $A \to B$ means ``$A$ simulates $B$''
+(equivalently, $B$ embeds into $A$).
+
 \begin{center}
 \begin{tabular}{llllll}
 \toprule
-Source & Target & $\sovh$ & $\tovh$ & Total & Reference \\
+Edge & $\sovh$ & $\tovh$ & Reference & Status \\
 \midrule
-Rule 110 & Cyclic tag & $\sim 20$ & $\oh{n}$ & $\oh{n}$ & Cook 2004 \\
-Cyclic tag & 2-tag & $\oh{1}$ & $\oh{2^n}$ & exp & Cocke--Minsky 1964 \\
-Cyclic tag & Clockwise TM & $\oh{n}$ & $\oh{n}$ & $\oh{n^2}$ & Neary--Woods 2006 \\
-$(2,3)$ TM & Rule 110 & $\oh{w}$ & $\oh{w}$ & $\oh{w^2}$ & Smith 2007 \\
-Game of Life & TM & $\sim 10^3$ & $\oh{1}$ & $\oh{10^3}$ & Rendell 2002 \\
-Register machine & TM & $\oh{1}$ & $\oh{1}$ & $\oh{1}$ & folklore \\
+TM $\to$ 2-Tag & $\oh{1}$ & bounded & Cocke--Minsky 1964 & hypothesis \\
+2-Tag $\to$ CTS & $\times k$ & $2k$ & Cook 2004 & \textbf{proved} \\
+CTS $\to$ Rule 110 & $\sim 20$ & $\oh{n}$ & Cook 2004 & unformalized \\
+Rule 110 $\to$ CTS & poly & poly & Neary--Woods 2006 & unformalized \\
+Rule 110 $\to$ TM(2,3) & $\oh{w}$ & $\oh{w}$ & Smith 2007 & hypothesis \\
+TM $\leftrightarrow$ GS & $1$ & $1$ / $\oh{w}$ & Moore 1991 & \textbf{proved} / 1 sorry \\
+ECA 110 $\leftrightarrow$ ECA 124 & $1$ & $1$ & mirror & \textbf{proved} \\
+Game of Life $\to$ TM & $\sim 10^3$ & $\oh{1}$ & Rendell 2002 & unformalized \\
+Billiard $\to$ TM & $\oh{1}$ & $\oh{|Q|}$ & Miranda--Ramos 2025 & unformalized \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-Neary--Woods replaced the exponential Cocke--Minsky path with:
+The Neary--Woods polynomial chain:
 $\mathrm{TM} \xrightarrow{\oh{1}} \mathrm{ClockwiseTM} \xrightarrow{\oh{n}}
 \mathrm{CyclicTag} \xrightarrow{\oh{n}} \mathrm{Rule\;110}$,
-total $\oh{t^2}$. This demonstrates \emph{edge discovery} as a central graph operation.
+achieving total polynomial overhead $\oh{t^2}$, replacing the exponential
+Cocke--Minsky path. This demonstrates \emph{edge discovery} as a central
+graph operation: finding a better path changes the overhead landscape.

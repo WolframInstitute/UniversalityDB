@@ -1,9 +1,26 @@
 \chapter{Connections to Wolfram Metamathematics}\label{ch:wolfram}
 
-Wolfram~\cite{wolfram2022physicalization}: the ruliad as metamathematical space.
-Our graph $\UG$ instantiates this for the domain of universality proofs:
-vertices $\leftrightarrow$ objects, edges $\leftrightarrow$ proofs,
-paths $\leftrightarrow$ composed proofs, graph metrics $\leftrightarrow$
-metamathematical observables.
+Wolfram~\cite{wolfram2022physicalization} introduces the \emph{ruliad} --- the
+entangled limit of all possible computations --- and proposes that mathematical
+theorems correspond to paths in a metamathematical space.
 
-The Principle of Computational Equivalence predicts $\UG$ is highly connected.
+The universality graph $\UG$ is a concrete instantiation of this idea:
+\begin{itemize}
+\item Vertices $\leftrightarrow$ computational objects in the ruliad
+\item Edges $\leftrightarrow$ constructive proofs (certified paths)
+\item Paths $\leftrightarrow$ composed proofs (transitivity)
+\item Graph metrics $\leftrightarrow$ metamathematical observables
+  (overhead as distance, diameter as proof complexity)
+\end{itemize}
+
+The \emph{Principle of Computational Equivalence}~\cite{wolfram2002nks} predicts
+that $\UG$ is highly connected: most sufficiently complex systems should be
+universal, so the universal core subgraph should have small diameter. The
+overhead weights on edges give a quantitative measure of ``how different''
+two universal systems are --- a notion that the ruliad framework makes
+precise.
+
+Wolfram's program of studying the space of all simple
+programs~\cite{wolfram2002nks} motivates the enumeration side: by scanning
+small $(s,k)$~TMs, small ECAs, and small tag systems, we populate $\VV$ and
+discover new edges. The LLM pipeline automates this exploration.

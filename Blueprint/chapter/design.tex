@@ -139,69 +139,19 @@ The scalar collapse for shortest-path algorithms: fix a reference input size
 $n_0$ and set $\wt(e) = \log w_e(n_0, 1)$. Composition: $w_{e_2 \circ e_1}(n, T)
 = w_{e_2}(\sovh_{e_1}(n), w_{e_1}(n, T))$.
 
-\section{Lean Type Signatures (Proposal)}
-
-Extending the grant proposal's \texttt{CompSystem}/\texttt{Simulation} sketches:
-
-\begin{verbatim}
--- A system family: parameterized type of computational systems
-structure SystemFamily where
-  Params : Type
-  system : Params -> CompSystem
-
--- A simulation edge between families
-structure SimEdge (F1 F2 : SystemFamily) where
-  -- Which instances are connected
-  sourceQuant : SourceQuant F1  -- forall or exists(witness)
-  targetQuant : TargetQuant F2  -- forall or exists(witness)
-  -- The construction (for forall-quantified sources)
-  targetParams : F1.Params -> F2.Params
-  encode : (p : F1.Params) -> (F1.system p).Config
-                            -> (F2.system (targetParams p)).Config
-  decode : (p : F1.Params) -> (F2.system (targetParams p)).Config
-                            -> Option (F1.system p).Config
-  -- Correctness
-  roundtrip : forall p c, decode p (encode p c) = some c
-  commutes  : forall p c, ...
-  -- Weight
-  weight : F1.Params -> Nat -> Nat
-
--- Quantifier types
-inductive SourceQuant (F : SystemFamily) where
-  | all : SourceQuant F
-  | witness : F.Params -> SourceQuant F
-
-inductive TargetQuant (F : SystemFamily) where
-  | all : TargetQuant F
-  | witness : F.Params -> TargetQuant F
-
--- Verification level
-inductive VerifLevel where
-  | fullyVerified | spotChecked | typeChecked | unformalized
-\end{verbatim}
-
-The key dependent typing: \texttt{targetParams : F1.Params -> F2.Params}
-makes the target family's parameters depend on the source's. For Moore Thm 7:
-\texttt{targetParams (s, k) = (3, s*k+k)}.
-
 \section{Resolution of the Design Issues}
 
 \begin{enumerate}
-\item \textbf{What is a vertex?} A vertex is a \emph{system family} with possibly
+\item \textbf{What is a vertex?} A \emph{system family} with possibly
   free parameters. Specific machines are families with singleton parameter space.
-\item \textbf{Quantification?} Carried on the edges, not the vertices. Each edge
+\item \textbf{Quantification?} Carried on edges, not vertices. Each edge
   specifies $\forall$ or $\exists(\text{witness})$ for source and target.
 \item \textbf{Overhead?} A weight function $w : \mathrm{Params} \times \NN \to \NN$,
   generalizing $(\sovh, \tovh)$. The scalar collapse is $\wt(e) = \log w_e(n_0, 1)$
   for a fixed reference size.
-\item \textbf{Verification granularity?} A four-level enum:
-  \texttt{FullyVerified}, \texttt{SpotChecked}, \texttt{TypeChecked},
-  \texttt{Unformalized}.
+\item \textbf{Verification granularity?} Four levels:
+  \texttt{FullyVerified} (no sorry),
+  \texttt{SpotChecked} (native\_decide),
+  \texttt{TypeChecked} (sorry proof),
+  \texttt{Unformalized} (paper only).
 \end{enumerate}
-
-\section{Next Steps}
-
-Implement this data model in \texttt{Wolfram/UniversalityGraph.wl} (Wolfram side)
-and \texttt{Lean/} (Lean side). The current flat edge table becomes
-a ground-level instantiation of the schema. The schema itself is a small graph
-that we draw and annotate with theorems.

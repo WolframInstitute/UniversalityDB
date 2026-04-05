@@ -8,9 +8,41 @@ in incompatible notation and at varying levels of rigor.
 The \emph{Universality Graph} $\UG = (\VV, \EE)$ organizes this landscape:
 \begin{itemize}
 \item Vertices $\VV$: computational systems (Turing machines, cellular automata, tag
-  systems, register machines, combinators, etc.)
+  systems, generalized shifts, combinators, \ldots)
 \item Edges $\EE$: directed edges $e : A \to B$ representing a constructive simulation
   of $B$ by $A$, carrying overhead weights $(\sovh_e, \tovh_e)$
 \end{itemize}
 A system $U$ is \emph{universal} if and only if for every $A \in \VV$ there exists a
 directed path from $A$ to $U$ in $\UG$.
+
+\section{Approach}
+
+Every vertex and edge is formalized in Lean~4. The base types
+(\texttt{ComputationalMachine}, \texttt{SimulationEncoding}, \texttt{Overhead})
+are defined once; each machine family and simulation proof instantiates them.
+Wolfram Language provides computational pre-validation and notebook-based
+demonstrations.
+
+\section{Current state}
+
+Six machine families are formalized: Turing machines (one-sided and bi-infinite),
+elementary cellular automata, generalized shifts, 2-tag systems, and cyclic tag
+systems. Five simulation edges exist:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Edge & Status & Chapter \\
+\midrule
+TM $\to$ GS (Moore Thm 7) & fully proved & \ref{ch:verified} \\
+GS $\to$ TM (Moore Thm 8) & 1 \texttt{sorry} & \ref{ch:verified} \\
+Tag $\to$ CTS (Cook) & fully proved & \ref{ch:verified} \\
+ECA 110 $\leftrightarrow$ 124 (mirror) & fully proved & \ref{ch:verified} \\
+TM $\to$ Tag $\to$ CTS $\to$ TM(2,3) & hypotheses & \ref{ch:verified} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The main universality theorem --- Wolfram's $(2,3)$~TM is universal --- is stated
+and proved modulo two hypotheses (Cocke--Minsky step simulation and Smith's
+CTS~$\to$~TM construction).

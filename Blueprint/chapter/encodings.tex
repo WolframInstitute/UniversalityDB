@@ -1,37 +1,54 @@
 \chapter{Simulation Encodings}\label{ch:encodings}
 
-\section{The Standard Template}
+\section{Definition}
 
-\begin{definition}[Simulation]\label{simulation-def}
-\lean{CompSystem.Simulation}
+\begin{definition}[Simulation encoding]\label{simulation-def}
+\lean{SimulationEncoding}
 \leanok
 \uses{comp-system}
-A simulation encoding $e : A \to B$ consists of:
+A simulation encoding $e : A \to B$ between computational machines consists of:
 \begin{enumerate}
-\item An \emph{encoding function} $\encode_e : \mathrm{Config}_B \to \mathrm{Config}_A$.
-\item A \emph{decoding function} $\decode_e : \mathrm{Config}_A \to \mathrm{Config}_B$.
-\item A \emph{step correspondence}: $A$ started at $\encode_e(c)$ reaches a
-  configuration from which $\decode_e$ recovers the successor of $c$.
+\item An encoding function $\encode : \mathrm{Config}_B \to \mathrm{Config}_A$.
+\item A decoding function $\decode : \mathrm{Config}_A \to \mathrm{Config}_B$.
+\item Roundtrip: $\decode(\encode(c)) = c$ for all $c$.
+\item Step correspondence: for every step $c \to c'$ of $B$, there exists $n$
+  such that $\mathrm{step}_A^n(\encode(c)) = \encode(c')$.
 \end{enumerate}
 \end{definition}
 
-\section{Encoding Overhead}
+\begin{proposition}[Identity encoding]\label{sim-id}
+\lean{SimulationEncoding.id}
+\leanok
+\uses{simulation-def}
+Every machine simulates itself.
+\end{proposition}
 
-\begin{definition}[Overhead tuple]\label{overhead-tuple}
-\lean{CompSystem.Overhead}
+\begin{proposition}[Composition]\label{sim-compose}
+\lean{SimulationEncoding.compose}
+\leanok
+\uses{simulation-def}
+Simulation encodings compose: if $e_1 : A \to B$ and $e_2 : B \to C$, then
+$e_1 \circ e_2 : A \to C$ is a valid simulation encoding. This gives $\UG$
+transitive closure.
+\end{proposition}
+
+\section{Overhead}
+
+\begin{definition}[Overhead]\label{overhead-def}
+\lean{Overhead}
 \leanok
 \uses{simulation-def}
 Each edge $e : A \to B$ carries $(\sovh_e, \tovh_e)$:
-$\sovh_e(n)$ = spatial overhead (cells of $A$ per cell of $B$),
-$\tovh_e(n)$ = temporal overhead (steps of $A$ per step of $B$).
+$\sovh_e(n)$ = spatial overhead (encoded config size as a function of
+original size), $\tovh_e(n)$ = temporal overhead (simulator steps per
+simulated step).
 \end{definition}
 
-\section{Composition of Encodings}
-
-\begin{proposition}[Composition formula]\label{prop:composition}
-\lean{CompSystem.Overhead.compose}
-\uses{overhead-tuple}
-For $e_1 : A \to B$ and $e_2 : B \to C$, the composed edge $e_2 \circ e_1 : A \to C$:
+\begin{proposition}[Overhead composition]\label{overhead-compose}
+\lean{Overhead.compose}
+\leanok
+\uses{overhead-def}
+For composed edges:
 \begin{align}
 \sovh_{e_2 \circ e_1}(n) &= \sovh_{e_1}\bigl(\sovh_{e_2}(n)\bigr), \\
 \tovh_{e_2 \circ e_1}(n) &= \tovh_{e_1}\bigl(\sovh_{e_2}(n)\bigr) \cdot \tovh_{e_2}(n).
@@ -39,8 +56,8 @@ For $e_1 : A \to B$ and $e_2 : B \to C$, the composed edge $e_2 \circ e_1 : A \t
 \end{proposition}
 
 \begin{definition}[Scalar weight]\label{scalar-weight}
-\uses{overhead-tuple}
+\uses{overhead-def}
 \notready
 $\wt(e) = \log(\sovh_e \cdot \tovh_e)$ makes composition approximately additive,
-enabling Dijkstra/Bellman--Ford on $\UG$.
+enabling shortest-path algorithms on $\UG$.
 \end{definition}
