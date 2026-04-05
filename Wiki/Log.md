@@ -13,3 +13,4 @@
 | 2026-04-05 | LLM | Created KnowledgeBasePlugin.md plan for extracting workflow as reusable plugin |
 | 2026-04-05 | LLM | Moved Notebooks/*.md → Wiki/Notebooks/; Notebooks/ now fully generated (gitignored) |
 | 2026-04-05 | LLM | Added notebook-create skill (skill 8) to plugin plan |
+| 2026-04-05 | LLM | Updated all Scripts/ to read from Wiki/Notebooks/ and Wiki/Resources/ |

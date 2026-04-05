@@ -367,11 +367,7 @@ For each section, the LLM:
 
 ### Revision rules for tour content
 
-Tour sections follow the same revision workflow as wiki articles:
-- Freshly generated sections are **draft**.
-- Once the user approves, they become **revised**.
-- Revised sections are not edited without asking (same as wiki articles).
-- If the underlying code changes significantly, mark **outdated** and notify.
+Tour sections are code + narrative — the LLM waits for user feedback before advancing. If the underlying code changes significantly, offer to regenerate affected sections.
 
 ### Resuming a tour
 
@@ -384,12 +380,12 @@ When the user returns and says "continue tour" or "where were we":
 | Command | Purpose |
 |---|---|
 | `cd Lean && lake build` | Build Lean project |
-| `Scripts/generate_notebooks.wls` | Convert .md -> .nb locally |
-| `Scripts/publish_notebooks.wls` | Convert .md -> .nb, upload to Wolfram Cloud |
-| `Scripts/recover_resources.sh` | Download all resource PDFs |
+| `Scripts/generate_notebooks.wls` | Convert `Wiki/Notebooks/*.md` → `Notebooks/*.nb` locally |
+| `Scripts/publish_notebooks.wls` | Convert + upload to Wolfram Cloud |
+| `Scripts/recover_resources.sh` | Rebuild `Resources/` from `Wiki/Resources/*.md` `## Recover` sections |
 | `leanblueprint web` | Build interactive Blueprint |
 | `leanblueprint serve` | Serve Blueprint locally |
-| `cd Blueprint && pdflatex notes1.tex` | Build standalone PDF |
+| `cd Blueprint && pdflatex print.tex` | Build Blueprint PDF |
 
 ## Lean quick reference
 
