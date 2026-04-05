@@ -11,7 +11,7 @@ Knowledge base for the Universality Graph project. Maintained by the LLM after e
 
 - [Current Focus](Plans/CurrentFocus.md) — closing GS → TM last sorry
 - [Next Edges](Plans/NextEdges.md) — candidates for the next formalization target
-- [Computational Research Plugin](Plans/ComputationalResearchPlugin.md) — extracting wiki/tour/resource workflow into the plugin
+
 
 ## Tour
 
