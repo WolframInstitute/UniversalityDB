@@ -24,8 +24,8 @@ The project also explores whether LLMs can autonomously push the boundary of res
 ```bash
 git clone --recurse-submodules <url>   # clone with LeanLink and TuringMachine submodules
 cd Lean && lake build                  # build Lean project
-Scripts/generate_notebooks.wls         # convert .md -> .nb locally
-Scripts/recover_resources.sh           # download resource PDFs
+Scripts/generate_notebooks.wls         # Wiki/Notebooks/*.md → Notebooks/*.nb
+Scripts/recover_resources.sh           # rebuild Resources/ from Wiki/Resources/*.md
 leanblueprint web                      # build interactive Blueprint
 ```
 
