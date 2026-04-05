@@ -17,6 +17,6 @@ Not yet formalized. A potential future edge with better overhead bounds than the
 
 ## See also
 
-- [[Cook2004]] — the original Rule 110 universality
-- [[ElementaryCellularAutomaton]] — the system
-- [[WoodsNeary2009]] — survey of small UTMs by the same authors
+- [Cook2004](Cook2004.md) — the original Rule 110 universality
+- [ElementaryCellularAutomaton](../Systems/ElementaryCellularAutomaton.md) — the system
+- [WoodsNeary2009](WoodsNeary2009.md) — survey of small UTMs by the same authors

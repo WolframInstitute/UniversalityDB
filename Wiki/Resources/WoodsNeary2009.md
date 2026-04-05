@@ -17,5 +17,5 @@ Reference for populating the universality graph with small UTMs and understandin
 
 ## See also
 
-- [[TuringMachine]] — the system family
-- [[Smith2007]] — the (2,3) UTM result
+- [TuringMachine](../Systems/TuringMachine.md) — the system family
+- [Smith2007](Smith2007.md) — the (2,3) UTM result

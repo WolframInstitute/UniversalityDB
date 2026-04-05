@@ -20,5 +20,5 @@ All machine families (TM, GS, Tag, CTS, ECA) are instances of this.
 
 ## See also
 
-- [[SimulationEncoding]] — morphisms between machines
-- [[Overhead]] — cost of simulation
+- [SimulationEncoding](SimulationEncoding.md) — morphisms between machines
+- [Overhead](Overhead.md) — cost of simulation

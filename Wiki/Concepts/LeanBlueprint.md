@@ -20,4 +20,4 @@ Template based on Terence Tao's PFR project. Upstream: https://github.com/pitmon
 
 ## See also
 
-- [[ComputationalMachine]], [[SimulationEncoding]] — the Lean types documented in the blueprint
+- [ComputationalMachine](ComputationalMachine.md), [SimulationEncoding](SimulationEncoding.md) — the Lean types documented in the blueprint

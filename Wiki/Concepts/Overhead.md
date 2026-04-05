@@ -25,5 +25,5 @@ Overheads compose: `Overhead.compose` chains spatial and temporal functions. `Ov
 
 ## See also
 
-- [[SimulationEncoding]] — the structure carrying overhead
-- [[ComputationalMachine]] — what's being measured
+- [SimulationEncoding](SimulationEncoding.md) — the structure carrying overhead
+- [ComputationalMachine](ComputationalMachine.md) — what's being measured

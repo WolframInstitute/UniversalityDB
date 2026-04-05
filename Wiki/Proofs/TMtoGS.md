@@ -23,6 +23,6 @@ Key theorems:
 
 ## See also
 
-- [[GStoTM]] — the reverse direction (Moore Theorem 8)
-- [[TuringMachine]], [[GeneralizedShift]] — the systems
-- [[Moore1991]] — the paper
+- [GStoTM](GStoTM.md) — the reverse direction (Moore Theorem 8)
+- [TuringMachine](../Systems/TuringMachine.md), [GeneralizedShift](../Systems/GeneralizedShift.md) — the systems
+- [Moore1991](../Resources/Moore1991.md) — the paper

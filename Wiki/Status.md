@@ -42,5 +42,5 @@ Closing the last sorry in GS → TM (`stepSimulation_w1` active case). See `work
 
 ## See also
 
-- [[CockeMinskyChain]] — the full TM → Tag → CTS → (2,3) TM chain
-- [[SimulationEncoding]] — the core Lean abstraction
+- [CockeMinskyChain](Proofs/CockeMinskyChain.md) — the full TM → Tag → CTS → (2,3) TM chain
+- [SimulationEncoding](Concepts/SimulationEncoding.md) — the core Lean abstraction

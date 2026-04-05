@@ -17,5 +17,5 @@ Motivating philosophical framework. The universality graph makes a piece of the 
 
 ## See also
 
-- [[SimulationEncoding]] — the formal edge type
-- [[Overhead]] — path weights in the graph
+- [SimulationEncoding](../Concepts/SimulationEncoding.md) — the formal edge type
+- [Overhead](../Concepts/Overhead.md) — path weights in the graph

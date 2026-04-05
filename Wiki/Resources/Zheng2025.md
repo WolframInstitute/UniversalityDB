@@ -17,5 +17,5 @@ Target: Resources/Zheng2025.pdf
 
 ## See also
 
-- [[Polu2020]] — GPT-f, a key earlier result
-- [[PipelineArchitecture]] — our LLM pipeline design
+- [Polu2020](Polu2020.md) — GPT-f, a key earlier result
+- [PipelineArchitecture](../Concepts/PipelineArchitecture.md) — our LLM pipeline design

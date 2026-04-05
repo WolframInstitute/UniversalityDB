@@ -10,10 +10,10 @@ A cyclic tag system (CTS) operates on a binary word. It cycles through a fixed l
 
 ## Universality edges
 
-- 2-Tag → CTS (Cook 2004): one-hot symbol encoding, 2k appendants. Fully proved. See [[TagToCTS]].
-- CTS → (2,3) TM (Smith 2007): hypothesis in current formalization. See [[CockeMinskyChain]].
+- 2-Tag → CTS (Cook 2004): one-hot symbol encoding, 2k appendants. Fully proved. See [TagToCTS](../Proofs/TagToCTS.md).
+- CTS → (2,3) TM (Smith 2007): hypothesis in current formalization. See [CockeMinskyChain](../Proofs/CockeMinskyChain.md).
 
 ## See also
 
-- [[TagSystem]] — the more general model
-- [[Cook2004]] — universality of Rule 110 via CTS
+- [TagSystem](TagSystem.md) — the more general model
+- [Cook2004](../Resources/Cook2004.md) — universality of Rule 110 via CTS

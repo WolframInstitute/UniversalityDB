@@ -12,12 +12,12 @@ Two variants are defined:
 
 ## Universality edges
 
-- TM → Generalized Shift (Moore Thm 7, σ=1, τ=1) — see [[TMtoGS]]
-- GS → TM (Moore Thm 8, σ=1, τ≤2(w-1)+m) — see [[GStoTM]]
-- TM → 2-Tag System (Cocke-Minsky 1964) — see [[CockeMinskyChain]]
+- TM → Generalized Shift (Moore Thm 7, σ=1, τ=1) — see [TMtoGS](../Proofs/TMtoGS.md)
+- GS → TM (Moore Thm 8, σ=1, τ≤2(w-1)+m) — see [GStoTM](../Proofs/GStoTM.md)
+- TM → 2-Tag System (Cocke-Minsky 1964) — see [CockeMinskyChain](../Proofs/CockeMinskyChain.md)
 
 ## See also
 
-- [[GeneralizedShift]] — dynamical systems equivalent
-- [[TagSystem]] — intermediate in the Cocke-Minsky chain
-- [[Moore1991]] — the GS equivalence paper
+- [GeneralizedShift](GeneralizedShift.md) — dynamical systems equivalent
+- [TagSystem](TagSystem.md) — intermediate in the Cocke-Minsky chain
+- [Moore1991](../Resources/Moore1991.md) — the GS equivalence paper

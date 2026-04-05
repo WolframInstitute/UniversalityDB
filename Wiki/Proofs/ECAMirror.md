@@ -20,5 +20,5 @@ Key theorems:
 
 ## See also
 
-- [[ElementaryCellularAutomaton]] — the system family
-- [[Cook2004]] — Rule 110 universality
+- [ElementaryCellularAutomaton](../Systems/ElementaryCellularAutomaton.md) — the system family
+- [Cook2004](../Resources/Cook2004.md) — Rule 110 universality

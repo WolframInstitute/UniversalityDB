@@ -23,6 +23,6 @@ The CTS → (2,3) TM simulation (`SmithSimulation`) is currently a hypothesis in
 
 ## See also
 
-- [[CockeMinskyChain]] — the full chain using Smith's result
-- [[TuringMachine]] — includes `wolfram23` definition
-- [[Cook2004]] — the Rule 110 result Smith builds on
+- [CockeMinskyChain](../Proofs/CockeMinskyChain.md) — the full chain using Smith's result
+- [TuringMachine](../Systems/TuringMachine.md) — includes `wolfram23` definition
+- [Cook2004](Cook2004.md) — the Rule 110 result Smith builds on

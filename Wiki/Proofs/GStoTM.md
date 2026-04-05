@@ -26,6 +26,6 @@ Key theorems:
 
 ## See also
 
-- [[TMtoGS]] — the forward direction (Moore Theorem 7)
-- [[TuringMachine]], [[GeneralizedShift]] — the systems
-- [[Moore1991]] — the paper
+- [TMtoGS](TMtoGS.md) — the forward direction (Moore Theorem 7)
+- [TuringMachine](../Systems/TuringMachine.md), [GeneralizedShift](../Systems/GeneralizedShift.md) — the systems
+- [Moore1991](../Resources/Moore1991.md) — the paper

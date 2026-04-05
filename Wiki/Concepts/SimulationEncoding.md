@@ -23,6 +23,6 @@ Key properties:
 
 ## See also
 
-- [[ComputationalMachine]] — the vertex type
-- [[Overhead]] — quantifying simulation cost
-- [[CockeMinskyChain]] — composition in action
+- [ComputationalMachine](ComputationalMachine.md) — the vertex type
+- [Overhead](Overhead.md) — quantifying simulation cost
+- [CockeMinskyChain](../Proofs/CockeMinskyChain.md) — composition in action

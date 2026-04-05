@@ -11,14 +11,14 @@ An elementary cellular automaton (ECA) is a 1D cellular automaton with 2 states 
 ## Key rules
 
 - **Rule 110**: proved universal by Cook (2004) via CTS simulation. Class 4 behavior.
-- **Rule 124**: mirror of Rule 110 (tape reversal bisimulation, σ=1, τ=1). See [[ECAMirror]].
+- **Rule 124**: mirror of Rule 110 (tape reversal bisimulation, σ=1, τ=1). See [ECAMirror](../Proofs/ECAMirror.md).
 
 ## Universality edges
 
-- ECA Rule 110 ↔ Rule 124 (tape reversal): fully proved. See [[ECAMirror]].
-- Rule 110 universality (Cook 2004): not yet formalized directly. See [[Cook2004]].
+- ECA Rule 110 ↔ Rule 124 (tape reversal): fully proved. See [ECAMirror](../Proofs/ECAMirror.md).
+- Rule 110 universality (Cook 2004): not yet formalized directly. See [Cook2004](../Resources/Cook2004.md).
 
 ## See also
 
-- [[Cook2004]] — Rule 110 universality proof
-- [[Neary2006]] — polynomial-overhead alternative
+- [Cook2004](../Resources/Cook2004.md) — Rule 110 universality proof
+- [Neary2006](../Resources/Neary2006.md) — polynomial-overhead alternative

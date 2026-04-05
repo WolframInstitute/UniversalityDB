@@ -10,10 +10,10 @@ A tag system operates on a finite word over an alphabet of size k. At each step 
 
 ## Universality edges
 
-- TM → 2-Tag (Cocke-Minsky 1964): tag alphabet = s*k + k + 1. See [[CockeMinskyChain]].
-- 2-Tag → Cyclic Tag (Cook 2004): one-hot encoding, 1 tag step = 2k CTS steps. See [[TagToCTS]].
+- TM → 2-Tag (Cocke-Minsky 1964): tag alphabet = s*k + k + 1. See [CockeMinskyChain](../Proofs/CockeMinskyChain.md).
+- 2-Tag → Cyclic Tag (Cook 2004): one-hot encoding, 1 tag step = 2k CTS steps. See [TagToCTS](../Proofs/TagToCTS.md).
 
 ## See also
 
-- [[CyclicTagSystem]] — the binary simplification
-- [[CockeMinskyChain]] — the full reduction chain
+- [CyclicTagSystem](CyclicTagSystem.md) — the binary simplification
+- [CockeMinskyChain](../Proofs/CockeMinskyChain.md) — the full reduction chain
