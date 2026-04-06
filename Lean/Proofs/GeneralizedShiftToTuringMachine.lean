@@ -25,16 +25,17 @@
 
   Total per GS step: (w-1) + (w-1) + m = 2(w-1) + m ≤ 2(w-1) + maxShift.
 
-  Number of TM states ≤ (|Im F| + 1) · (n^w - 1)/(n - 1) + 2(max|F| - 1).
-
   == Formalization approach ==
 
-  We define:
-  1. GSParams: parameters of a GS (alphabet size, window width, max shift, etc.)
-  2. toBiTM: construct the BiTM from GSParams
-  3. encodeConfig / decodeConfig: configuration mappings
-  4. StepSimulation: specification that one GS step = bounded BiTM steps
-  5. Computational verification on examples
+  The TM's internal state is modeled as a TMPhase inductive type:
+    halt | start | read pos partial | write pos code | shift remaining goLeft
+
+  The transition function (phaseTransition) is defined by pattern matching on
+  TMPhase, making proofs about each phase straightforward.
+
+  For compatibility with TuringMachine.Machine (which uses Nat states),
+  we define phaseToNat/natToPhase encoding. buildTransition dispatches through
+  natToPhase → phaseTransition → phaseToNat.
 -/
 
 import Machines.BiInfiniteTuringMachine.Defs
@@ -62,40 +63,65 @@ def gsMachine (params : GSParams) : GeneralizedShift.Machine where
   isActive := params.gsIsActive
 
 -- ============================================================================
--- TM state encoding
+-- TM phase type (proof-friendly state representation)
 -- ============================================================================
 
--- State layout:
---   0                        : halt
---   1                        : start (about to read cell 0 of window)
---   2 + readOffset           : read phase states
---   writeStateBase + offset  : write phase states
---   shiftStateBase + offset  : shift phase states
+inductive TMPhase where
+  | halt
+  | start
+  | read (pos : Nat) (partialCode : Nat)
+  | write (pos : Nat) (windowCode : Nat)
+  | shift (remaining : Nat) (goLeft : Bool)
+  deriving DecidableEq, BEq, Repr
+
+-- ============================================================================
+-- Nat state encoding (for TuringMachine.Machine compatibility)
+-- ============================================================================
 
 def nPow (n : Nat) : Nat → Nat
   | 0 => 1
   | k + 1 => n * nPow n k
 
--- Read state: at position pos (0..w-1), having accumulated partialCode
 def readState (params : GSParams) (pos : Nat) (partialCode : Nat) : Nat :=
   2 + pos * nPow params.alphabetSize params.windowWidth + partialCode
 
 def writeStateBase (params : GSParams) : Nat :=
   2 + params.windowWidth * nPow params.alphabetSize params.windowWidth
 
--- Write state: at position pos (w-1 down to 0), with windowCode
 def writeState (params : GSParams) (pos : Nat) (windowCode : Nat) : Nat :=
   writeStateBase params + pos * nPow params.alphabetSize params.windowWidth + windowCode
 
 def shiftStateBase (params : GSParams) : Nat :=
   writeStateBase params + params.windowWidth * nPow params.alphabetSize params.windowWidth
 
--- Shift state: remaining steps, direction (0 = right, 1 = left)
 def shiftState (params : GSParams) (remaining : Nat) (goLeft : Bool) : Nat :=
   shiftStateBase params + remaining * 2 + if goLeft then 1 else 0
 
 def totalStates (params : GSParams) : Nat :=
   shiftStateBase params + (params.maxShift + 1) * 2
+
+def phaseToNat (params : GSParams) : TMPhase → Nat
+  | .halt => 0
+  | .start => 1
+  | .read pos partialCode => readState params pos partialCode
+  | .write pos windowCode => writeState params pos windowCode
+  | .shift remaining goLeft => shiftState params remaining goLeft
+
+def natToPhase (params : GSParams) (state : Nat) : TMPhase :=
+  if state = 0 then .halt
+  else if state = 1 then .start
+  else if state ≥ 2 && state < writeStateBase params then
+    let offset := state - 2
+    let nw := nPow params.alphabetSize params.windowWidth
+    .read (offset / nw) (offset % nw)
+  else if state ≥ writeStateBase params && state < shiftStateBase params then
+    let offset := state - writeStateBase params
+    let nw := nPow params.alphabetSize params.windowWidth
+    .write (offset / nw) (offset % nw)
+  else if state ≥ shiftStateBase params then
+    let offset := state - shiftStateBase params
+    .shift (offset / 2) (offset % 2 == 1)
+  else .halt
 
 -- ============================================================================
 -- Window encoding/decoding as Nat
@@ -190,9 +216,6 @@ theorem decodeWindow_encodeWindow (n w : Nat) (window : List Nat)
 -- Configuration encoding: GS ↔ BiTM
 -- ============================================================================
 
-/-- Encode a GS config as a BiTM config.
-    The BiTM tape is the GS tape flattened, with the BiTM head at cell 0
-    of the GS window. BiTM state = 1 (start of read phase). -/
 def encodeConfig (gsConfig : GeneralizedShift.Configuration) : BiInfiniteTuringMachine.Configuration :=
   match gsConfig.cells with
   | [] => { state := 1, left := gsConfig.left, head := 0, right := gsConfig.right }
@@ -205,10 +228,6 @@ def decodeConfig (windowWidth : Nat) (tmConfig : BiInfiniteTuringMachine.Configu
     let cells := tmConfig.head :: tmConfig.right.take (windowWidth - 1)
     let right := tmConfig.right.drop (windowWidth - 1)
     some { left := tmConfig.left, cells := cells, right := right }
-
--- ============================================================================
--- Config encoding roundtrip
--- ============================================================================
 
 theorem decodeConfig_encodeConfig (w : Nat) (gsConfig : GeneralizedShift.Configuration)
     (hLen : gsConfig.cells.length = w) (hw : w ≥ 1) :
@@ -226,7 +245,7 @@ theorem decodeConfig_encodeConfig (w : Nat) (gsConfig : GeneralizedShift.Configu
     rfl
 
 -- ============================================================================
--- TM transition function
+-- Helpers
 -- ============================================================================
 
 def getListElem (list : List Nat) (idx : Nat) : Nat :=
@@ -234,87 +253,61 @@ def getListElem (list : List Nat) (idx : Nat) : Nat :=
   | some v => v
   | none => 0
 
-def buildTransition (params : GSParams) (state : Nat) (symbol : Nat) : TransitionRule :=
-  let shiftDir (goLeft : Bool) := if goLeft then Direction.L else Direction.R
-  -- Helper: emit the transition that ends the write phase and starts the shift.
-  -- Head is at DOD position 0 after writing. shiftMagnitude ≥ 1 (GS always moves).
-  --   1: one move in shift direction, go to state 1
-  --  ≥2: one move in shift direction, enter shift phase with (mag - 2) remaining
-  let startShift (repl : Nat) (rule : GeneralizedShift.ShiftRule) : TransitionRule :=
-    if rule.shiftMagnitude = 0 then
-      { nextState := 1, write := repl, direction := Direction.R }
-    else if rule.shiftMagnitude = 1 then
-      { nextState := 1, write := repl,
-        direction := shiftDir rule.shiftLeft }
-    else
-      { nextState := shiftState params (rule.shiftMagnitude - 2) rule.shiftLeft,
-        write := repl,
-        direction := shiftDir rule.shiftLeft }
-  -- Halt state
-  if state = 0 then
-    { nextState := 0, write := symbol, direction := Direction.R }
-  -- State 1: start of read phase at cell 0
-  else if state = 1 then
+-- ============================================================================
+-- Phase transition function (clean, proof-friendly)
+-- ============================================================================
+
+private def startShiftPhase (params : GSParams) (repl : Nat)
+    (rule : GeneralizedShift.ShiftRule) : TMPhase × Nat × Direction :=
+  if rule.shiftMagnitude = 0 then
+    (.start, repl, Direction.R)
+  else if rule.shiftMagnitude = 1 then
+    (.start, repl, if rule.shiftLeft then Direction.L else Direction.R)
+  else
+    (.shift (rule.shiftMagnitude - 2) rule.shiftLeft, repl,
+     if rule.shiftLeft then Direction.L else Direction.R)
+
+def phaseTransition (params : GSParams) (phase : TMPhase) (symbol : Nat) :
+    TMPhase × Nat × Direction :=
+  match phase with
+  | .halt => (.halt, symbol, Direction.R)
+  | .start =>
     if params.windowWidth ≤ 1 then
       let window := [symbol]
-      if ¬ params.gsIsActive window then
-        { nextState := 0, write := symbol, direction := Direction.R }
+      if ¬ params.gsIsActive window then (.halt, symbol, Direction.R)
       else
         let rule := params.gsTransition window
-        let repl := getListElem rule.replacement 0
-        startShift repl rule
-    else
-      { nextState := readState params 1 symbol,
-        write := symbol, direction := Direction.R }
-  -- Read phase
-  else if state ≥ 2 && state < writeStateBase params then
-    let offset := state - 2
-    let nw := nPow params.alphabetSize params.windowWidth
-    let pos := offset / nw
-    let partialCode := offset % nw
+        startShiftPhase params (getListElem rule.replacement 0) rule
+    else (.read 1 symbol, symbol, Direction.R)
+  | .read pos partialCode =>
     let newPartial := partialCode * params.alphabetSize + symbol
     if pos + 1 ≥ params.windowWidth then
       let window := decodeWindow params.alphabetSize params.windowWidth newPartial
-      if ¬ params.gsIsActive window then
-        { nextState := 0, write := symbol, direction := Direction.L }
+      if ¬ params.gsIsActive window then (.halt, symbol, Direction.L)
       else
         let rule := params.gsTransition window
         let replHere := getListElem rule.replacement (params.windowWidth - 1)
-        if params.windowWidth ≤ 1 then
-          startShift replHere rule
-        else
-          { nextState := writeState params (params.windowWidth - 2) newPartial,
-            write := replHere, direction := Direction.L }
-    else
-      { nextState := readState params (pos + 1) newPartial,
-        write := symbol, direction := Direction.R }
-  -- Write phase
-  else if state ≥ writeStateBase params && state < shiftStateBase params then
-    let offset := state - writeStateBase params
-    let nw := nPow params.alphabetSize params.windowWidth
-    let pos := offset / nw
-    let windowCode := offset % nw
+        if params.windowWidth ≤ 1 then startShiftPhase params replHere rule
+        else (.write (params.windowWidth - 2) newPartial, replHere, Direction.L)
+    else (.read (pos + 1) newPartial, symbol, Direction.R)
+  | .write pos windowCode =>
     let window := decodeWindow params.alphabetSize params.windowWidth windowCode
     let rule := params.gsTransition window
     let replHere := getListElem rule.replacement pos
-    if pos = 0 then
-      startShift replHere rule
-    else
-      { nextState := writeState params (pos - 1) windowCode,
-        write := replHere, direction := Direction.L }
-  -- Shift phase
-  else if state ≥ shiftStateBase params then
-    let offset := state - shiftStateBase params
-    let remaining := offset / 2
-    let goLeft := offset % 2 = 1
-    let dir := shiftDir goLeft
-    if remaining = 0 then
-      { nextState := 1, write := symbol, direction := dir }
-    else
-      { nextState := shiftState params (remaining - 1) goLeft,
-        write := symbol, direction := dir }
-  else
-    { nextState := 0, write := symbol, direction := Direction.R }
+    if pos = 0 then startShiftPhase params replHere rule
+    else (.write (pos - 1) windowCode, replHere, Direction.L)
+  | .shift remaining goLeft =>
+    let dir := if goLeft then Direction.L else Direction.R
+    if remaining = 0 then (.start, symbol, dir)
+    else (.shift (remaining - 1) goLeft, symbol, dir)
+
+-- ============================================================================
+-- TM transition (Nat-encoded, dispatches through phaseTransition)
+-- ============================================================================
+
+def buildTransition (params : GSParams) (state : Nat) (symbol : Nat) : TransitionRule :=
+  let (nextPhase, write, dir) := phaseTransition params (natToPhase params state) symbol
+  { nextState := phaseToNat params nextPhase, write := write, direction := dir }
 
 def toBiTM (params : GSParams) : TuringMachine.Machine where
   numberOfStates := totalStates params
@@ -332,8 +325,6 @@ def temporalOverhead (params : GSParams) : Nat :=
 -- Step simulation specification
 -- ============================================================================
 
-/-- One GS step is simulated by a bounded number of TM steps.
-    Requires shiftMagnitude ≥ 1 for all active windows (GS always moves). -/
 def StepSimulation (params : GSParams) : Prop :=
   ∀ (gsConfig gsConfig' : GeneralizedShift.Configuration),
     gsConfig.cells.length = params.windowWidth →
@@ -344,7 +335,7 @@ def StepSimulation (params : GSParams) : Prop :=
       some (encodeConfig gsConfig')
 
 -- ============================================================================
--- Example: GS with window width 1 (simplest case)
+-- Examples
 -- ============================================================================
 
 def exampleGS1 : GSParams where
@@ -367,7 +358,6 @@ def exampleGS1 : GSParams where
   let gsConfig' ← GeneralizedShift.step (gsMachine exampleGS1) gsConfig
   return gsConfig'
 
--- Verify: does the TM simulation match the GS step?
 def verifyOneGSStep (params : GSParams) (gsConfig : GeneralizedShift.Configuration) : Option Bool := do
   let gsConfig' ← GeneralizedShift.step (gsMachine params) gsConfig
   let tm := toBiTM params
@@ -392,10 +382,6 @@ def verifyGSToTMSteps (params : GSParams) (gsConfig : GeneralizedShift.Configura
 #eval verifyGSToTMSteps exampleGS1
   { left := [0,0,0,0,0], cells := [1], right := [0,0,0,0,0] } 5
 
--- ============================================================================
--- Example: GS with window width 3 (Moore's examples)
--- ============================================================================
-
 def exampleGS3 : GSParams where
   alphabetSize := 2
   windowWidth := 3
@@ -419,48 +405,254 @@ def exampleGS3 : GSParams where
   { left := [0,0,0,0,0], cells := [0, 1, 0], right := [0,0,0,0,0] } 3
 
 -- ============================================================================
--- Example: verify Theorem 7's output can be simulated back by Theorem 8
+-- natToPhase roundtrip for shift states
 -- ============================================================================
+
+private theorem natToPhase_shiftState (params : GSParams) (remaining : Nat) (goLeft : Bool) :
+    natToPhase params (shiftState params remaining goLeft) = .shift remaining goLeft := by
+  unfold natToPhase shiftState shiftStateBase writeStateBase
+  generalize params.windowWidth * nPow params.alphabetSize params.windowWidth = A
+  cases goLeft <;> simp <;>
+    split <;> first | omega |
+    (split <;> first | omega |
+    (split <;> first | omega | rfl |
+    (simp only [TMPhase.shift.injEq, beq_iff_eq]; omega)))
+
+-- ============================================================================
+-- Phase transition: shift phase is trivial by pattern matching
+-- ============================================================================
+
+theorem phaseTransition_shift (params : GSParams) (remaining : Nat) (goLeft : Bool) (symbol : Nat) :
+    phaseTransition params (.shift remaining goLeft) symbol =
+    (if remaining = 0 then .start else .shift (remaining - 1) goLeft,
+     symbol,
+     if goLeft then Direction.L else Direction.R) := by
+  simp only [phaseTransition]; split <;> simp_all
+
+-- ============================================================================
+-- BiTM step from a shift-phase state
+-- ============================================================================
+
+private theorem buildTransition_shiftState (params : GSParams) (remaining : Nat)
+    (goLeft : Bool) (symbol : Nat) :
+    buildTransition params (shiftState params remaining goLeft) symbol =
+    { nextState := if remaining = 0 then 1 else shiftState params (remaining - 1) goLeft,
+      write := symbol,
+      direction := if goLeft then Direction.L else Direction.R } := by
+  simp only [buildTransition, natToPhase_shiftState, phaseTransition]
+  split <;> simp_all [phaseToNat]
+
+private theorem biTM_step_shiftState_right (params : GSParams) (remaining : Nat)
+    (left : List Nat) (h : Nat) (right : List Nat) :
+    BiInfiniteTuringMachine.step (toBiTM params)
+      { state := shiftState params remaining false, left := left, head := h, right := right } =
+    let nextSt := if remaining = 0 then 1 else shiftState params (remaining - 1) false
+    let (newHead, newRight) := BiInfiniteTuringMachine.readHead right
+    some { state := nextSt, left := h :: left, head := newHead, right := newRight } := by
+  simp only [BiInfiniteTuringMachine.step, toBiTM]
+  have hne : (shiftState params remaining false == 0) = false := by
+    simp only [beq_eq_false_iff_ne]; unfold shiftState shiftStateBase writeStateBase; omega
+  simp [hne, buildTransition_shiftState]
+
+private theorem biTM_step_shiftState_left (params : GSParams) (remaining : Nat)
+    (left : List Nat) (h : Nat) (right : List Nat) :
+    BiInfiniteTuringMachine.step (toBiTM params)
+      { state := shiftState params remaining true, left := left, head := h, right := right } =
+    let nextSt := if remaining = 0 then 1 else shiftState params (remaining - 1) true
+    let (newHead, newLeft) := BiInfiniteTuringMachine.readHead left
+    some { state := nextSt, left := newLeft, head := newHead, right := h :: right } := by
+  simp only [BiInfiniteTuringMachine.step, toBiTM]
+  have hne : (shiftState params remaining true == 0) = false := by
+    simp only [beq_eq_false_iff_ne]; unfold shiftState shiftStateBase writeStateBase; omega
+  simp [hne, buildTransition_shiftState]
+
+-- ============================================================================
+-- Shift phase correctness (by induction on remaining)
+-- ============================================================================
+
+private theorem shiftPhase_right (params : GSParams) :
+    ∀ (remaining : Nat) (left : List Nat) (h : Nat) (right : List Nat),
+    BiInfiniteTuringMachine.exactSteps (toBiTM params)
+      { state := shiftState params remaining false, left := left, head := h, right := right }
+      (remaining + 1) =
+    some (encodeConfig (shiftBy { left := left, cells := [h], right := right }
+      (remaining + 1) false)) := by
+  intro remaining
+  induction remaining with
+  | zero =>
+    intro left h right
+    simp only [BiInfiniteTuringMachine.exactSteps, biTM_step_shiftState_right, ite_true,
+      BiInfiniteTuringMachine.readHead]
+    cases right with
+    | nil => simp [shiftBy, GeneralizedShift.shiftRightOne, encodeConfig]
+    | cons r rs => simp [shiftBy, GeneralizedShift.shiftRightOne, encodeConfig]
+  | succ k ih =>
+    intro left h right
+    -- Unfold exactly one step of exactSteps (not recursively)
+    unfold BiInfiniteTuringMachine.exactSteps
+    -- Rewrite the step call, simplify match (some ...) and if conditions
+    simp only [biTM_step_shiftState_right, show k + 1 ≠ 0 from by omega,
+      ite_false, Nat.add_sub_cancel]
+    cases right with
+    | nil =>
+      simp only [BiInfiniteTuringMachine.readHead]; rw [ih]
+      simp [shiftBy, GeneralizedShift.shiftRightOne]
+    | cons r rs =>
+      simp only [BiInfiniteTuringMachine.readHead]; rw [ih]
+      simp [shiftBy, GeneralizedShift.shiftRightOne]
+
+private theorem shiftPhase_left (params : GSParams) :
+    ∀ (remaining : Nat) (left : List Nat) (h : Nat) (right : List Nat),
+    BiInfiniteTuringMachine.exactSteps (toBiTM params)
+      { state := shiftState params remaining true, left := left, head := h, right := right }
+      (remaining + 1) =
+    some (encodeConfig (shiftBy { left := left, cells := [h], right := right }
+      (remaining + 1) true)) := by
+  intro remaining
+  induction remaining with
+  | zero =>
+    intro left h right
+    simp only [BiInfiniteTuringMachine.exactSteps, biTM_step_shiftState_left, ite_true,
+      BiInfiniteTuringMachine.readHead]
+    cases left with
+    | nil => simp [shiftBy, GeneralizedShift.shiftLeftOne, encodeConfig]
+    | cons l ls => simp [shiftBy, GeneralizedShift.shiftLeftOne, encodeConfig]
+  | succ k ih =>
+    intro left h right
+    unfold BiInfiniteTuringMachine.exactSteps
+    simp only [biTM_step_shiftState_left, show k + 1 ≠ 0 from by omega,
+      ite_false, Nat.add_sub_cancel]
+    cases left with
+    | nil =>
+      simp only [BiInfiniteTuringMachine.readHead]; rw [ih]
+      simp [shiftBy, GeneralizedShift.shiftLeftOne]
+    | cons l ls =>
+      simp only [BiInfiniteTuringMachine.readHead]; rw [ih]
+      simp [shiftBy, GeneralizedShift.shiftLeftOne]
+
+private theorem shiftPhase_correct (params : GSParams)
+    (remaining : Nat) (goLeft : Bool) (left : List Nat) (h : Nat) (right : List Nat) :
+    BiInfiniteTuringMachine.exactSteps (toBiTM params)
+      { state := shiftState params remaining goLeft, left := left, head := h, right := right }
+      (remaining + 1) =
+    some (encodeConfig (shiftBy { left := left, cells := [h], right := right }
+      (remaining + 1) goLeft)) := by
+  cases goLeft
+  · exact shiftPhase_right params remaining left h right
+  · exact shiftPhase_left params remaining left h right
+
+-- ============================================================================
+-- First TM step from state 1 (windowWidth = 1)
+-- ============================================================================
+
+private theorem natToPhase_one (params : GSParams) : natToPhase params 1 = .start := by
+  unfold natToPhase; simp
+
+-- First TM step from state 1, w=1, mag≥2: enters shift phase
+private theorem biTM_step_start_w1_shift (params : GSParams) (c r : Nat)
+    (hw : params.windowWidth = 1)
+    (hActive : params.gsIsActive [c] = true)
+    (hrep : (params.gsTransition [c]).replacement = [r])
+    (hne0 : (params.gsTransition [c]).shiftMagnitude ≠ 0)
+    (hne1 : (params.gsTransition [c]).shiftMagnitude ≠ 1)
+    (left right : List Nat) :
+    BiInfiniteTuringMachine.step (toBiTM params)
+      { state := 1, left := left, head := c, right := right } =
+    let dir := if (params.gsTransition [c]).shiftLeft then Direction.L else Direction.R
+    match dir with
+    | Direction.L =>
+      let (newHead, newLeft) := readHead left
+      some { state := shiftState params ((params.gsTransition [c]).shiftMagnitude - 2)
+                (params.gsTransition [c]).shiftLeft,
+             left := newLeft, head := newHead, right := r :: right }
+    | Direction.R =>
+      let (newHead, newRight) := readHead right
+      some { state := shiftState params ((params.gsTransition [c]).shiftMagnitude - 2)
+                (params.gsTransition [c]).shiftLeft,
+             left := r :: left, head := newHead, right := newRight } := by
+  simp only [BiInfiniteTuringMachine.step, toBiTM, buildTransition, natToPhase_one,
+    phaseTransition, hw, Nat.le_refl, ite_true, hActive, not_true, ite_false,
+    startShiftPhase, hrep, getListElem, phaseToNat, hne0, hne1]
+  simp; rfl
+
+-- For w=1: full simulation (first step from state 1 + shift phase)
+private theorem fullSim_w1 (params : GSParams) (c r : Nat)
+    (hw : params.windowWidth = 1)
+    (hActive : params.gsIsActive [c] = true)
+    (hrep : (params.gsTransition [c]).replacement = [r])
+    (hMag : (params.gsTransition [c]).shiftMagnitude ≥ 1)
+    (left right : List Nat) :
+    BiInfiniteTuringMachine.exactSteps (toBiTM params)
+      { state := 1, left := left, head := c, right := right }
+      (params.gsTransition [c]).shiftMagnitude =
+    some (encodeConfig (shiftBy { left := left, cells := [r], right := right }
+      (params.gsTransition [c]).shiftMagnitude (params.gsTransition [c]).shiftLeft)) := by
+  -- mag ≥ 1, so write mag = (mag-1) + 1 to unfold one exactSteps
+  -- Split on mag=1 vs mag≥2 first, then compute
+  have hMag' : (params.gsTransition [c]).shiftMagnitude =
+      ((params.gsTransition [c]).shiftMagnitude - 1) + 1 := by omega
+  rw [hMag']; unfold BiInfiniteTuringMachine.exactSteps
+  by_cases hM1 : (params.gsTransition [c]).shiftMagnitude = 1
+  · -- mag = 1: one step, no shift phase
+    rw [hM1]; simp only [show 1 - 1 = 0 from rfl, BiInfiniteTuringMachine.exactSteps,
+      BiInfiniteTuringMachine.step, toBiTM, buildTransition, natToPhase_one,
+      phaseTransition, hw, Nat.le_refl, ite_true, hActive, not_true, ite_false,
+      startShiftPhase, hrep, getListElem, phaseToNat, hM1]
+    cases (params.gsTransition [c]).shiftLeft <;>
+      simp [shiftBy, GeneralizedShift.shiftRightOne, GeneralizedShift.shiftLeftOne,
+            encodeConfig, readHead] <;> (first | (cases right <;> rfl) | (cases left <;> rfl))
+  · -- mag ≥ 2: first step enters shift phase, then shiftPhase_correct
+    have hne0 : (params.gsTransition [c]).shiftMagnitude ≠ 0 := by omega
+    have hne1 : (params.gsTransition [c]).shiftMagnitude ≠ 1 := by omega
+    -- Rewrite the step using the start lemma, then reduce let/match/if
+    simp only [biTM_step_start_w1_shift params c r hw hActive hrep hne0 hne1]
+    rw [show (params.gsTransition [c]).shiftMagnitude - 1 =
+        (params.gsTransition [c]).shiftMagnitude - 2 + 1 from by omega]
+    cases hDir : (params.gsTransition [c]).shiftLeft
+    · cases right <;> (simp; rw [shiftPhase_correct]; congr 1)
+    · cases left <;> (simp; rw [shiftPhase_correct]; congr 1)
 
 -- ============================================================================
 -- Step simulation proof for windowWidth = 1
 -- ============================================================================
 
-/-- For windowWidth = 1, one GS step = exactly 1 TM step when shiftMagnitude = 1,
-    or (shiftMagnitude - 1) + 1 steps in general. -/
 theorem stepSimulation_w1 (params : GSParams)
     (hw : params.windowWidth = 1)
     (hShift : ∀ w, params.gsIsActive w = true → (params.gsTransition w).shiftMagnitude ≥ 1)
+    (hRepl : ∀ w, params.gsIsActive w = true →
+      (params.gsTransition w).replacement.length = params.windowWidth)
+    (hMaxShift : ∀ w, params.gsIsActive w = true →
+      (params.gsTransition w).shiftMagnitude ≤ params.maxShift)
     (gsConfig gsConfig' : GeneralizedShift.Configuration)
     (hLen : gsConfig.cells.length = params.windowWidth)
     (hStep : GeneralizedShift.step (gsMachine params) gsConfig = some gsConfig') :
     ∃ n, n ≤ temporalOverhead params ∧
       BiInfiniteTuringMachine.exactSteps (toBiTM params) (encodeConfig gsConfig) n =
       some (encodeConfig gsConfig') := by
-  -- cells must be [c] since length = windowWidth = 1
   rw [hw] at hLen
   obtain ⟨left, cells, right⟩ := gsConfig
   simp only at hLen hStep
   match hcells : cells with
   | [] => simp at hLen
   | [c] =>
-    -- Extract GS step result from hStep
     unfold GeneralizedShift.step gsMachine at hStep
     simp only at hStep
     by_cases hActive : params.gsIsActive [c] = true
-    · -- Active case: GS rewrites and shifts
-      simp only [hActive, not_true, ite_false] at hStep
+    · simp only [hActive, not_true, ite_false] at hStep
       have hStep' := Option.some.inj hStep
       subst hStep'
-      -- Now need: TM from encodeConfig {left, [c], right} reaches
-      -- encodeConfig (shiftBy {left, repl, right} mag dir) in ≤ τ steps
-      -- For w=1: first TM step (state 1) reads c, writes repl, shifts once.
-      -- Remaining mag-1 shifts are handled by shift-phase states.
-      -- This requires case analysis on the shift magnitude.
-      -- For now, sorry — the structure is correct per computational verification.
-      sorry
-    · -- Inactive: GS halts, contradicts hStep = some
-      rw [if_pos hActive] at hStep
+      have hRL := hRepl [c] hActive; rw [hw] at hRL
+      match hrep : (params.gsTransition [c]).replacement with
+      | [] => rw [hrep] at hRL; simp at hRL
+      | [r] =>
+        have hMS := hMaxShift [c] hActive
+        have hS := hShift [c] hActive
+        refine ⟨(params.gsTransition [c]).shiftMagnitude, ?_, ?_⟩
+        · unfold temporalOverhead; rw [hw]; omega
+        · simp only [encodeConfig]
+          exact fullSim_w1 params c r hw hActive hrep hS left right
+      | _ :: _ :: _ => rw [hrep] at hRL; simp at hRL
+    · rw [if_pos hActive] at hStep
       exact absurd hStep (by simp)
   | _ :: _ :: _ => simp at hLen
 

@@ -15,14 +15,18 @@ TM states encode (phase, position, accumulated data) as a single natural number 
 
 `Lean/Proofs/GeneralizedShiftToTuringMachine.lean`
 
-Key definitions: `GSParams`, `readState`/`writeState`/`shiftState` (state encoders), `buildTransition` (85-line transition constructor), `toBiTM`, `encodeConfig`/`decodeConfig`.
+Key definitions: `GSParams`, `TMPhase` (inductive state type: halt/start/read/write/shift), `phaseTransition` (pattern-matching transition), `natToPhase`/`phaseToNat` (Nat encoding roundtrip), `buildTransition` (dispatches through `natToPhase` → `phaseTransition` → `phaseToNat`), `toBiTM`, `encodeConfig`/`decodeConfig`.
 
 Key theorems:
 - `decodeWindow_encodeWindow` — window encoding roundtrip
 - `decodeConfig_encodeConfig` — config roundtrip
+- `natToPhase_shiftState` — Nat→TMPhase roundtrip for shift states
+- `buildTransition_shiftState` — transition at shift states produces correct rule
+- `shiftPhase_correct` — shift phase: (remaining+1) TM steps = shiftBy (remaining+1)
+- `fullSim_w1` — full simulation for windowWidth=1 (first step + shift phase)
 - `stepSimulation_w1` — step simulation for windowWidth=1
 
-**Status:** 1 sorry in `stepSimulation_w1` active case. The difficulty is proving that `buildTransition` produces correct phase compositions for general window widths. See `working.md` for detailed analysis.
+**Status:** 0 sorry. Step simulation fully proved for windowWidth=1 with formal overhead bound `n ≤ temporalOverhead params`. The `TMPhase` inductive type replaced the original Nat-encoded state arithmetic, making the transition function amenable to pattern-matching proofs. Extending to general w requires handling the multi-step read/write phases (all infrastructure is in place).
 
 ## See also
 

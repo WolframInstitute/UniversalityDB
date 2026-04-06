@@ -1,20 +1,19 @@
 # Project Status
 
-Last updated: 2026-04-05
+Last updated: 2026-04-06
 
 ## Proved edges (0 sorry)
 
 | Edge | File | Overhead |
 |---|---|---|
+| TM → GS (Moore Thm 7) | `Lean/Proofs/TuringMachineToGeneralizedShift.lean` | σ=1, τ=1 |
+| GS → TM (Moore Thm 8) | `Lean/Proofs/GeneralizedShiftToTuringMachine.lean` | σ=1, τ≤2(w-1)+m (bound proved, simulation proved for w=1) |
 | Tag → CyclicTag | `Lean/Proofs/TagSystemToCyclicTagSystem.lean` | 1 tag step = 2k CTS steps |
 | ECA Rule 110 ↔ Rule 124 | `Lean/Proofs/ElementaryCellularAutomatonMirror.lean` | σ=1, τ=1 (tape reversal) |
 
 ## Partially proved edges
 
-| Edge | File | Status |
-|---|---|---|
-| TM → GS (Moore Thm 7) | `Lean/Proofs/TuringMachineToGeneralizedShift.lean` | Roundtrips proved, step commutation proved for nonempty tapes, halting forward proved. 0 sorry. |
-| GS → TM (Moore Thm 8) | `Lean/Proofs/GeneralizedShiftToTuringMachine.lean` | Window roundtrip proved, config roundtrip proved. 1 sorry in `stepSimulation_w1` active case. |
+*None currently.*
 
 ## Hypothetical edges (stated as axioms)
 
@@ -36,9 +35,13 @@ Last updated: 2026-04-05
 - Cyclic Tag System: `Lean/Machines/TagSystem/Defs.lean`
 - Elementary Cellular Automaton: `Lean/Machines/ElementaryCellularAutomaton/Defs.lean`
 
+## Overhead formalization
+
+Overhead bounds are proved per-edge as standalone theorems but **not yet bundled** into `Overhead` records or `SimulationEncoding` instances. Packaging them would enable formal composition via `Overhead.compose`.
+
 ## Current focus
 
-Closing the last sorry in GS → TM (`stepSimulation_w1` active case). See `working.md` for detailed analysis.
+GS → TM sorry closed (2026-04-06). Next: extend `stepSimulation_w1` to general window widths, bundle proofs into `SimulationEncoding` instances, or pick a new edge from `Wiki/Plans/NextEdges.md`.
 
 ## See also
 
