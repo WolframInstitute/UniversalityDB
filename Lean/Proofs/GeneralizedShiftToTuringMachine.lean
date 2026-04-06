@@ -405,7 +405,68 @@ def exampleGS3 : GSParams where
   { left := [0,0,0,0,0], cells := [0, 1, 0], right := [0,0,0,0,0] } 3
 
 -- ============================================================================
--- natToPhase roundtrip for shift states
+-- Arithmetic helpers
+-- ============================================================================
+
+private theorem nPow_pos (n : Nat) (hn : n ≥ 1) : ∀ k, nPow n k ≥ 1
+  | 0 => by simp [nPow]
+  | k + 1 => by
+    unfold nPow
+    have := nPow_pos n hn k
+    calc n * nPow n k ≥ 1 * 1 := Nat.mul_le_mul hn this
+    _ = 1 := by omega
+
+private theorem nPow_pos' (params : GSParams) (hn : params.alphabetSize ≥ 1) :
+    nPow params.alphabetSize params.windowWidth ≥ 1 :=
+  nPow_pos _ hn _
+
+private theorem succ_mul_eq (a b : Nat) : (a + 1) * b = a * b + b := by
+  rw [Nat.add_mul, Nat.one_mul]
+
+private theorem mul_nPow_lt (pos : Nat) (code : Nat) (w : Nat) (nw : Nat)
+    (hPos : pos < w) (hCode : code < nw) (hnw : nw ≥ 1) :
+    pos * nw + code < w * nw := by
+  have h1 : pos * nw + code < pos * nw + nw := by omega
+  have h2 : pos * nw + nw = (pos + 1) * nw := (succ_mul_eq pos nw).symm
+  have h3 : (pos + 1) * nw ≤ w * nw := Nat.mul_le_mul_right nw hPos
+  omega
+
+private theorem encodeWindow_bound (n : Nat) (hn : n ≥ 1) :
+    ∀ (window : List Nat), (∀ x, x ∈ window → x < n) →
+    encodeWindow n window < nPow n window.length
+  | [], _ => by simp [encodeWindow, nPow]
+  | x :: xs, hBound => by
+    rw [encodeWindow_cons, List.length_cons, nPow]
+    have hx : x < n := hBound x (List.Mem.head xs)
+    have hxs := encodeWindow_bound n hn xs (fun y hy => hBound y (List.Mem.tail x hy))
+    have hnp := nPow_pos n hn xs.length
+    have h1 : encodeWindow n xs + x * nPow n xs.length
+        < nPow n xs.length + x * nPow n xs.length := by omega
+    have h2 : nPow n xs.length + x * nPow n xs.length = (x + 1) * nPow n xs.length :=
+      by rw [succ_mul_eq]; omega
+    have h3 : (x + 1) * nPow n xs.length ≤ n * nPow n xs.length :=
+      Nat.mul_le_mul_right _ hx
+    omega
+
+private theorem exactSteps_none (machine : TuringMachine.Machine)
+    (config : BiInfiniteTuringMachine.Configuration) (n : Nat)
+    (h : BiInfiniteTuringMachine.step machine config = none) :
+    BiInfiniteTuringMachine.exactSteps machine config (n + 1) = none := by
+  cases n with
+  | zero => simp [BiInfiniteTuringMachine.exactSteps, h]
+  | succ k => simp [BiInfiniteTuringMachine.exactSteps, h]
+
+private theorem exactSteps_succ (machine : TuringMachine.Machine)
+    (config config' : BiInfiniteTuringMachine.Configuration) (n : Nat)
+    (h : BiInfiniteTuringMachine.step machine config = some config') :
+    BiInfiniteTuringMachine.exactSteps machine config (n + 1) =
+    BiInfiniteTuringMachine.exactSteps machine config' n := by
+  cases n with
+  | zero => simp [BiInfiniteTuringMachine.exactSteps, h]
+  | succ k => simp [BiInfiniteTuringMachine.exactSteps, h]
+
+-- ============================================================================
+-- natToPhase roundtrips
 -- ============================================================================
 
 private theorem natToPhase_shiftState (params : GSParams) (remaining : Nat) (goLeft : Bool) :
@@ -417,6 +478,50 @@ private theorem natToPhase_shiftState (params : GSParams) (remaining : Nat) (goL
     (split <;> first | omega |
     (split <;> first | omega | rfl |
     (simp only [TMPhase.shift.injEq, beq_iff_eq]; omega)))
+
+private theorem natToPhase_readState (params : GSParams) (pos : Nat) (code : Nat)
+    (hPos : pos < params.windowWidth)
+    (hCode : code < nPow params.alphabetSize params.windowWidth) :
+    natToPhase params (readState params pos code) = .read pos code := by
+  unfold natToPhase readState writeStateBase
+  generalize nPow params.alphabetSize params.windowWidth = nw at *
+  have hnw : nw ≥ 1 := by omega
+  have hlt : pos * nw + code < params.windowWidth * nw :=
+    mul_nPow_lt pos code params.windowWidth nw hPos hCode hnw
+  -- Navigate if/else: state = 2 + pos*nw + code, so ≠0, ≠1, in read range
+  simp; split
+  · omega
+  · split
+    · -- In read range ✓
+      simp only [show 2 + pos * nw + code - 2 = pos * nw + code from by omega,
+        TMPhase.read.injEq]
+      exact ⟨mul_add_div_right pos code nw hnw (by omega),
+             mul_add_mod_right pos code nw (by omega)⟩
+    · -- Not in read range: hlt gives contradiction
+      exfalso; omega
+
+private theorem natToPhase_writeState (params : GSParams) (pos : Nat) (code : Nat)
+    (hPos : pos < params.windowWidth)
+    (hCode : code < nPow params.alphabetSize params.windowWidth) :
+    natToPhase params (writeState params pos code) = .write pos code := by
+  unfold natToPhase writeState writeStateBase shiftStateBase
+  -- Unfold nPow and generalize so omega can handle all arithmetic
+  generalize hNW : nPow params.alphabetSize params.windowWidth = nw at *
+  have hnw : nw ≥ 1 := by omega
+  have hlt : pos * nw + code < params.windowWidth * nw :=
+    mul_nPow_lt pos code params.windowWidth nw hPos hCode hnw
+  simp; split
+  · omega
+  · split
+    · omega  -- In read range: contradiction (state ≥ 2 + w*nw > 2 + w*nw - 1)
+    · split
+      · -- In write range ✓
+        have heq : 2 + params.windowWidth * nw + pos * nw + code - (2 + params.windowWidth * nw) =
+            pos * nw + code := by omega
+        rw [heq, mul_add_div_right pos code nw hnw (by omega),
+            mul_add_mod_right pos code nw (by omega)]
+      · -- Beyond write range: contradiction
+        exfalso; unfold writeStateBase at *; rw [hNW] at *; omega
 
 -- ============================================================================
 -- Phase transition: shift phase is trivial by pattern matching
@@ -430,7 +535,7 @@ theorem phaseTransition_shift (params : GSParams) (remaining : Nat) (goLeft : Bo
   simp only [phaseTransition]; split <;> simp_all
 
 -- ============================================================================
--- BiTM step from a shift-phase state
+-- buildTransition characterization lemmas
 -- ============================================================================
 
 private theorem buildTransition_shiftState (params : GSParams) (remaining : Nat)
@@ -441,6 +546,24 @@ private theorem buildTransition_shiftState (params : GSParams) (remaining : Nat)
       direction := if goLeft then Direction.L else Direction.R } := by
   simp only [buildTransition, natToPhase_shiftState, phaseTransition]
   split <;> simp_all [phaseToNat]
+
+private theorem buildTransition_readState (params : GSParams) (pos : Nat) (code : Nat)
+    (symbol : Nat) (hPos : pos < params.windowWidth)
+    (hCode : code < nPow params.alphabetSize params.windowWidth) :
+    buildTransition params (readState params pos code) symbol =
+    let (nextPhase, write, dir) :=
+      phaseTransition params (.read pos code) symbol
+    { nextState := phaseToNat params nextPhase, write := write, direction := dir } := by
+  simp only [buildTransition, natToPhase_readState params pos code hPos hCode]
+
+private theorem buildTransition_writeState (params : GSParams) (pos : Nat) (code : Nat)
+    (symbol : Nat) (hPos : pos < params.windowWidth)
+    (hCode : code < nPow params.alphabetSize params.windowWidth) :
+    buildTransition params (writeState params pos code) symbol =
+    let (nextPhase, write, dir) :=
+      phaseTransition params (.write pos code) symbol
+    { nextState := phaseToNat params nextPhase, write := write, direction := dir } := by
+  simp only [buildTransition, natToPhase_writeState params pos code hPos hCode]
 
 private theorem biTM_step_shiftState_right (params : GSParams) (remaining : Nat)
     (left : List Nat) (h : Nat) (right : List Nat) :
@@ -655,5 +778,179 @@ theorem stepSimulation_w1 (params : GSParams)
     · rw [if_pos hActive] at hStep
       exact absurd hStep (by simp)
   | _ :: _ :: _ => simp at hLen
+
+-- ============================================================================
+-- Bridge: encodeConfig absorbs cells into head + right
+-- ============================================================================
+
+/-- encodeConfig flattens cells, so w-cell and 1-cell views of the same tape are equal. -/
+private theorem encodeConfig_flatten (left : List Nat) (c : Nat) (cs right : List Nat) :
+    encodeConfig { left := left, cells := c :: cs, right := right } =
+    encodeConfig { left := left, cells := [c], right := cs ++ right } := by
+  simp [encodeConfig]
+
+/-- The key bridge: encodeConfig ∘ shiftBy only depends on the flat tape,
+    not on where cells ends and right begins.
+    Requires tape length ≥ mag to avoid 0-padding mismatch. -/
+private theorem encodeConfig_shiftBy_right :
+    ∀ (mag : Nat) (left : List Nat) (c : Nat) (cs right : List Nat),
+    right.length ≥ mag →
+    encodeConfig (shiftBy { left := left, cells := c :: cs, right := right } mag false) =
+    encodeConfig (shiftBy { left := left, cells := [c], right := cs ++ right } mag false)
+  | 0, left, c, cs, right, _ => encodeConfig_flatten left c cs right
+  | mag + 1, left, c, cs, right, hLen => by
+    unfold shiftBy; simp only [ite_false, ite_true, Bool.false_eq_true]
+    cases cs with
+    | nil =>
+      cases right with
+      | nil => simp at hLen
+      | cons r rs => simp [shiftRightOne, List.drop]
+    | cons d ds =>
+      cases right with
+      | nil => simp at hLen
+      | cons r rs =>
+        simp only [shiftRightOne, List.drop]
+        have hL : rs.length ≥ mag := by simp at hLen; omega
+        have ih := encodeConfig_shiftBy_right mag (c :: left) d (ds ++ [r]) rs hL
+        simp only [List.append_assoc] at ih; exact ih
+
+private theorem encodeConfig_shiftBy_left :
+    ∀ (mag : Nat) (left : List Nat) (c : Nat) (cs right : List Nat),
+    left.length ≥ mag →
+    encodeConfig (shiftBy { left := left, cells := c :: cs, right := right } mag true) =
+    encodeConfig (shiftBy { left := left, cells := [c], right := cs ++ right } mag true)
+  | 0, left, c, cs, right, _ => encodeConfig_flatten left c cs right
+  | mag + 1, left, c, cs, right, hLen => by
+    unfold shiftBy; simp only [ite_true]
+    cases cs with
+    | nil =>
+      cases left with
+      | nil => simp at hLen
+      | cons l ls => simp [shiftLeftOne, List.getLastD, List.dropLast]
+    | cons d ds =>
+      cases left with
+      | nil => simp at hLen
+      | cons l ls =>
+        -- After simp, the goal has c :: (d::ds).dropLast instead of (c::d::ds).dropLast
+        -- and [c].getLast instead of c. Normalize before applying IH.
+        simp only [shiftLeftOne, List.getLastD, List.dropLast, List.getLast]
+        -- Now goal: ... l :: c :: (d::ds).dropLast ... = ... [l], c :: (d :: ds ++ right) ...
+        -- IH needs cells = l :: (c :: d :: ds).dropLast = l :: c :: (d::ds).dropLast ✓
+        have hL : ls.length ≥ mag := by simp at hLen; omega
+        -- Rewrite (c::d::ds).dropLast to c :: (d::ds).dropLast in IH
+        have hDL : (c :: d :: ds).dropLast = c :: (d :: ds).dropLast := by
+          simp [List.dropLast]
+        have hGL : (c :: d :: ds).getLast (by simp) = (d :: ds).getLast (by simp) := by
+          simp [List.getLast]
+        have ih := encodeConfig_shiftBy_left mag ls l ((c :: d :: ds).dropLast)
+            ((c :: d :: ds).getLast (by simp) :: right) hL
+        rw [hDL, hGL] at ih
+        -- Need: shiftBy with right = (c :: dropLast) ++ (getLast :: right)
+        --      = shiftBy with right = c :: d :: ds ++ right
+        -- These lists are equal:
+        have hList : (c :: (d :: ds).dropLast) ++ ((d :: ds).getLast (by simp) :: right) =
+            c :: (d :: ds ++ right) := by
+          rw [List.cons_append]
+          congr 1
+          have h1 := dropLast_append_getLast (show d :: ds ≠ [] from by simp)
+          rw [show (d :: ds).getLast (by simp) :: right =
+              [(d :: ds).getLast (by simp)] ++ right from rfl]
+          rw [← List.append_assoc, h1]
+        simp only [ih, hList]
+
+private theorem encodeConfig_shiftBy_flatten (left : List Nat) (c : Nat) (cs right : List Nat)
+    (mag : Nat) (dir : Bool)
+    (hLen : if dir then left.length ≥ mag else right.length ≥ mag) :
+    encodeConfig (shiftBy { left := left, cells := c :: cs, right := right } mag dir) =
+    encodeConfig (shiftBy { left := left, cells := [c], right := cs ++ right } mag dir) := by
+  cases dir
+  · exact encodeConfig_shiftBy_right mag left c cs right (by simpa using hLen)
+  · exact encodeConfig_shiftBy_left mag left c cs right (by simpa using hLen)
+
+
+-- ============================================================================
+-- Full simulation for w ≥ 2: read + write + shift phases
+-- ============================================================================
+
+/-- For w ≥ 2: the full TM simulation starting from state 1 matches one GS step.
+    2(w-1) + mag TM steps from encodeConfig reach encodeConfig of the GS result.
+    Requires tape-length bounds to handle 0-padding in shiftBy. -/
+private theorem fullSim_general (params : GSParams)
+    (hAlpha : params.alphabetSize ≥ 1)
+    (hWidth : params.windowWidth ≥ 2)
+    (cells : List Nat) (repl : List Nat)
+    (hLen : cells.length = params.windowWidth)
+    (hActive : params.gsIsActive cells = true)
+    (hCellBound : ∀ x, x ∈ cells → x < params.alphabetSize)
+    (hRepl : (params.gsTransition cells).replacement = repl)
+    (hReplLen : repl.length = params.windowWidth)
+    (hReplBound : ∀ x, x ∈ repl → x < params.alphabetSize)
+    (hMag : (params.gsTransition cells).shiftMagnitude ≥ 1)
+    (left right : List Nat) :
+    BiInfiniteTuringMachine.exactSteps (toBiTM params)
+      (encodeConfig { left := left, cells := cells, right := right })
+      (2 * (params.windowWidth - 1) + (params.gsTransition cells).shiftMagnitude) =
+    some (encodeConfig (shiftBy
+      { left := left, cells := repl, right := right }
+      (params.gsTransition cells).shiftMagnitude
+      (params.gsTransition cells).shiftLeft)) := by
+  -- Decompose cells into c₀ :: rest (nonempty since w ≥ 2)
+  match hcells : cells with
+  | [] => simp at hLen; omega
+  | [_] => simp at hLen; omega
+  | c₀ :: c₁ :: rest =>
+    -- encodeConfig {left, c₀::c₁::rest, right} = {state=1, left, head=c₀, right=c₁::rest++right}
+    show BiInfiniteTuringMachine.exactSteps (toBiTM params)
+      { state := 1, left := left, head := c₀, right := (c₁ :: rest) ++ right }
+      (2 * (params.windowWidth - 1) + (params.gsTransition (c₀ :: c₁ :: rest)).shiftMagnitude) =
+      some (encodeConfig (shiftBy { left := left, cells := repl, right := right }
+        (params.gsTransition (c₀ :: c₁ :: rest)).shiftMagnitude
+        (params.gsTransition (c₀ :: c₁ :: rest)).shiftLeft))
+    sorry
+
+-- ============================================================================
+-- General step simulation (all window widths)
+-- ============================================================================
+
+/-- General step simulation: one GS step = bounded TM steps for any window width.
+    Requires tape-length preconditions to avoid 0-padding mismatch. -/
+theorem stepSimulation (params : GSParams)
+    (hAlpha : params.alphabetSize ≥ 1)
+    (hWidth : params.windowWidth ≥ 1)
+    (hShift : ∀ w, params.gsIsActive w = true → (params.gsTransition w).shiftMagnitude ≥ 1)
+    (hRepl : ∀ w, params.gsIsActive w = true →
+      (params.gsTransition w).replacement.length = params.windowWidth)
+    (hMaxShift : ∀ w, params.gsIsActive w = true →
+      (params.gsTransition w).shiftMagnitude ≤ params.maxShift)
+    (hBound : ∀ w, params.gsIsActive w = true →
+      ∀ x, x ∈ (params.gsTransition w).replacement → x < params.alphabetSize)
+    (gsConfig gsConfig' : GeneralizedShift.Configuration)
+    (hLen : gsConfig.cells.length = params.windowWidth)
+    (hCellBound : ∀ x, x ∈ gsConfig.cells → x < params.alphabetSize)
+    (hStep : GeneralizedShift.step (gsMachine params) gsConfig = some gsConfig') :
+    ∃ n, n ≤ temporalOverhead params ∧
+      BiInfiniteTuringMachine.exactSteps (toBiTM params) (encodeConfig gsConfig) n =
+      some (encodeConfig gsConfig') := by
+  by_cases hw1 : params.windowWidth = 1
+  · exact stepSimulation_w1 params hw1 hShift hRepl hMaxShift gsConfig gsConfig' hLen hStep
+  · -- windowWidth ≥ 2
+    have hWidth2 : params.windowWidth ≥ 2 := by omega
+    obtain ⟨left, cells, right⟩ := gsConfig
+    simp only at hLen hStep hCellBound
+    unfold GeneralizedShift.step gsMachine at hStep
+    simp only at hStep
+    by_cases hActive : params.gsIsActive cells = true
+    · simp only [hActive, not_true, ite_false] at hStep
+      have hStep' := Option.some.inj hStep; subst hStep'
+      have hRL := hRepl cells hActive
+      have hMS := hMaxShift cells hActive
+      have hS := hShift cells hActive
+      refine ⟨2 * (params.windowWidth - 1) + (params.gsTransition cells).shiftMagnitude, ?_, ?_⟩
+      · unfold temporalOverhead; omega
+      · exact fullSim_general params hAlpha hWidth2 cells
+          (params.gsTransition cells).replacement hLen hActive hCellBound rfl hRL
+          (hBound cells hActive) hS left right
+    · rw [if_pos hActive] at hStep
+      exact absurd hStep (by simp)
 
 end GeneralizedShiftToTuringMachine
