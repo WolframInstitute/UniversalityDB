@@ -1,8 +1,14 @@
 # Working Notes: TM ↔ GS Formalization
 
-## Summary (2026-04-05)
+## Summary (2026-04-06)
 
-Build succeeds with **1 sorry** (GS→TM `stepSimulation_w1` active case).
+Build succeeds with **0 sorry, 0 axiom**. Both TM↔GS directions fully proved.
+
+### Key change (2026-04-06): TMPhase refactor
+
+The original `buildTransition` encoded TM states as Nat using arithmetic (division, modulo). Proving properties required navigating an 85-line if/else chain, which caused `simp` to produce 100K+ character goals.
+
+**Fix:** Introduced `TMPhase` inductive type (halt/start/read/write/shift). Redefined `buildTransition` to dispatch through `natToPhase → phaseTransition → phaseToNat`. Now `phaseTransition` is pattern matching (trivial proofs), and the Nat encoding roundtrip (`natToPhase_shiftState`) is proved once.
 
 ### TM → GS (Theorem 7) — sorry-free ✅
 

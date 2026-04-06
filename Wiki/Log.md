@@ -2,6 +2,8 @@
 
 | Date | Actor | Action |
 |---|---|---|
+| 2026-04-06 | LLM | Updated wiki (Status, GStoTM, Moore1991) for accurate overhead/w=1 status; updated Wolfram graph edges (added Tag→CTS, fixed GS→TM τ); updated README with verified-edges table |
+| 2026-04-06 | LLM | Closed last sorry in GS→TM: refactored Nat state to TMPhase inductive, proved stepSimulation_w1. Build: 0 sorry, 0 axiom. |
 | 2026-04-05 | LLM | Created wiki with 22 seed articles across Systems/, Proofs/, Concepts/, Papers/ |
 | 2026-04-05 | LLM | Added Plans/, Log.md, and revision workflow to CLAUDE.md |
 | 2026-04-05 | LLM | Added Tour/ system: guided interactive walk with .wl code generation |

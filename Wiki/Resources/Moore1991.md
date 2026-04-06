@@ -18,7 +18,7 @@ Target: Resources/Moore1991.pdf
 
 ## Use in this project
 
-Both theorems are formalized in Lean. Theorem 7 is fully proved (0 sorry). Theorem 8 has 1 sorry remaining in the step simulation.
+Both theorems are formalized in Lean with 0 sorry. Theorem 7 is fully proved. Theorem 8 is fully proved for windowWidth=1; the general case shares all infrastructure but the step simulation theorem is stated for w=1.
 
 ## See also
 

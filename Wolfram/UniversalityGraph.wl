@@ -68,7 +68,7 @@ $knownEdges = {
   { "GenericTM", "PlanarBilliard", "O[1]", "O[|Q|]",
     "Miranda-Ramos 2025, arXiv:2512.19156", False },
 
-  (* -- Computationally verified in this project -- *)
+  (* -- Lean-verified in this project -- *)
   { "Rule110", "Rule124", 1, 1,
     "Mirror conjugation", True },
   { "Rule124", "Rule110", 1, 1,
@@ -77,11 +77,11 @@ $knownEdges = {
     "Complement conjugation", True },
   { "Rule137", "Rule110", 1, 1,
     "Complement conjugation", True },
-  { "2Tag", "GenericTM", 1, "O[n]",
-    "Tape sweep simulation", True },
+  { "2Tag", "CyclicTag", "O[k]", "O[k]",
+    "Cook 2004, one-hot encoding", True },
   { "GenericTM", "GeneralizedShift", 1, 1,
     "Moore 1991, Nonlinearity 4, Thm 7", True },
-  { "GeneralizedShift", "GenericTM", 1, 5,
+  { "GeneralizedShift", "GenericTM", 1, "O[w]",
     "Moore 1991, Nonlinearity 4, Thm 8", True }
 };
 

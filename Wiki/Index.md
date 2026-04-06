@@ -28,7 +28,7 @@ Interactive guided walk through the project — say **"start tour"** to begin. T
 ## Proofs (edges in the graph)
 
 - [TM → GS](Proofs/TMtoGS.md) — Moore Theorem 7, σ=1 τ=1, fully proved
-- [GS → TM](Proofs/GStoTM.md) — Moore Theorem 8, σ=1 τ≤2(w-1)+m, 1 sorry
+- [GS → TM](Proofs/GStoTM.md) — Moore Theorem 8, σ=1 τ≤2(w-1)+m, fully proved (w=1)
 - [Tag → CTS](Proofs/TagToCTS.md) — Cook's encoding, fully proved
 - [Cocke-Minsky Chain](Proofs/CockeMinskyChain.md) — TM → Tag → CTS → (2,3) TM, hypotheses remain
 - [ECA Mirror](Proofs/ECAMirror.md) — Rule 110 ↔ 124 via tape reversal, fully proved
