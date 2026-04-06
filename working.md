@@ -2,13 +2,46 @@
 
 ## Summary (2026-04-06)
 
-Build succeeds with **0 sorry, 0 axiom**. Both TM↔GS directions fully proved.
+Build succeeds with **1 sorry** in `fullSim_general` (read+write phase loop for w≥2).
 
-### Key change (2026-04-06): TMPhase refactor
+- TM → GS: fully proved (0 sorry)
+- GS → TM w=1: fully proved (0 sorry)
+- GS → TM general w: `stepSimulation` theorem wired, 1 sorry in `fullSim_general`
 
-The original `buildTransition` encoded TM states as Nat using arithmetic (division, modulo). Proving properties required navigating an 85-line if/else chain, which caused `simp` to produce 100K+ character goals.
+### TMPhase refactor
 
-**Fix:** Introduced `TMPhase` inductive type (halt/start/read/write/shift). Redefined `buildTransition` to dispatch through `natToPhase → phaseTransition → phaseToNat`. Now `phaseTransition` is pattern matching (trivial proofs), and the Nat encoding roundtrip (`natToPhase_shiftState`) is proved once.
+Introduced `TMPhase` inductive type (halt/start/read/write/shift). `buildTransition` dispatches through `natToPhase → phaseTransition → phaseToNat`. The Nat encoding roundtrips (`natToPhase_{shift,read,write}State`) are proved.
+
+### What's proved for general w
+
+- `natToPhase_readState`, `natToPhase_writeState` — Nat→TMPhase roundtrips
+- `buildTransition_readState`, `buildTransition_writeState` — single-step characterization
+- `encodeConfig_shiftBy_flatten` — bridge: w-cell and 1-cell views agree under encodeConfig after shiftBy (requires tape length ≥ mag)
+- `shiftPhase_correct` — shift phase by induction (from w=1 proof)
+- `fullSim_w1` — w=1 case complete
+- `stepSimulation` — general theorem, delegates to w=1 and fullSim_general
+
+### Remaining: fullSim_general (read+write phase loop)
+
+The sorry is in proving that 2(w-1)+mag TM steps from `encodeConfig` match one GS step for w≥2. The proof requires:
+
+1. **Read phase** (w steps): state 1 → readState → ... → writeState. By induction on remaining read steps. At each step, `buildTransition_readState` gives the transition, head moves right, partial code accumulates.
+
+2. **Write phase** (w-1 steps): writeState → ... → startShiftPhase. By induction on write position. At each step, `buildTransition_writeState` gives the transition, replacement symbol written, head moves left.
+
+3. **Shift entry** (1 step within write phase): pos=0 write step calls `startShiftPhase`, which enters shift phase or reaches state 1 (if mag=1).
+
+4. **Shift phase** (mag-1 steps): already proved as `shiftPhase_correct`.
+
+5. **Composition**: chain phases using `exactSteps_succ`, apply `encodeConfig_shiftBy_flatten` bridge.
+
+### Difficulties encountered
+
+- `omega` cannot reason about products of variables (e.g., `pos * nw < w * nw`). Need explicit `Nat.mul_le_mul_right` via `mul_nPow_lt`.
+- `simp` with `shiftBy` causes infinite recursion (recursive function). Use `unfold shiftBy` for one step.
+- `generalize nPow ... = nw` must be done carefully — residual `writeStateBase`/`shiftStateBase` may still contain `nPow`.
+- List `dropLast`/`getLast` on `c :: d :: ds` normalizes to `c :: (d :: ds).dropLast`, requiring manual `hDL`/`hGL` rewrites before applying IH.
+- `(c :: xs) ++ ys` vs `c :: (xs ++ ys)` — `List.cons_append` needed for `rw`.
 
 ### TM → GS (Theorem 7) — sorry-free ✅
 
