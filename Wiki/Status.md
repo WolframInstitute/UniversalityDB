@@ -7,7 +7,7 @@ Last updated: 2026-04-06
 | Edge | File | Overhead |
 |---|---|---|
 | TM → GS (Moore Thm 7) | `Lean/Proofs/TuringMachineToGeneralizedShift.lean` | σ=1, τ=1 |
-| GS → TM (Moore Thm 8) | `Lean/Proofs/GeneralizedShiftToTuringMachine.lean` | σ=1, τ≤2(w-1)+m (bound proved, simulation proved for w=1) |
+| GS → TM (Moore Thm 8) | `Lean/Proofs/GeneralizedShiftToTuringMachine.lean` | σ=1, τ≤2(w-1)+m (w=1 fully proved; general w wired, 1 sorry in read+write loop) |
 | Tag → CyclicTag | `Lean/Proofs/TagSystemToCyclicTagSystem.lean` | 1 tag step = 2k CTS steps |
 | ECA Rule 110 ↔ Rule 124 | `Lean/Proofs/ElementaryCellularAutomatonMirror.lean` | σ=1, τ=1 (tape reversal) |
 
@@ -41,7 +41,7 @@ Overhead bounds are proved per-edge as standalone theorems but **not yet bundled
 
 ## Current focus
 
-GS → TM sorry closed (2026-04-06). Next: extend `stepSimulation_w1` to general window widths, bundle proofs into `SimulationEncoding` instances, or pick a new edge from `Wiki/Plans/NextEdges.md`.
+GS → TM general width in progress. `stepSimulation` theorem proved for w=1, wired for all w with 1 sorry in `fullSim_general` (read+write phase loop). See `Wiki/Plans/GStoTM_GeneralWidth.md` for detailed plan.
 
 ## See also
 
