@@ -465,6 +465,20 @@ private theorem exactSteps_succ (machine : TuringMachine.Machine)
   | zero => simp [BiInfiniteTuringMachine.exactSteps, h]
   | succ k => simp [BiInfiniteTuringMachine.exactSteps, h]
 
+private theorem exactSteps_append (machine : TuringMachine.Machine)
+    (c1 c2 : BiInfiniteTuringMachine.Configuration) (n1 n2 : Nat)
+    (h : BiInfiniteTuringMachine.exactSteps machine c1 n1 = some c2) :
+    BiInfiniteTuringMachine.exactSteps machine c1 (n1 + n2) =
+    BiInfiniteTuringMachine.exactSteps machine c2 n2 := by
+  induction n1 generalizing c1 with
+  | zero => simp [BiInfiniteTuringMachine.exactSteps] at h; subst h; simp
+  | succ k ih =>
+    rw [show k + 1 + n2 = (k + n2) + 1 from by omega]
+    simp only [BiInfiniteTuringMachine.exactSteps] at h ⊢
+    match hStep : BiInfiniteTuringMachine.step machine c1 with
+    | none => simp [hStep] at h
+    | some c1' => simp only [hStep] at h ⊢; exact ih c1' h
+
 -- ============================================================================
 -- natToPhase roundtrips
 -- ============================================================================
@@ -869,6 +883,389 @@ private theorem encodeConfig_shiftBy_flatten (left : List Nat) (c : Nat) (cs rig
 
 
 -- ============================================================================
+-- Arithmetic helpers for code bounds
+-- ============================================================================
+
+private theorem nPow_mono (n : Nat) (hn : n ≥ 1) : ∀ {a b : Nat}, a ≤ b → nPow n a ≤ nPow n b := by
+  intro a b hab
+  induction hab with
+  | refl => exact Nat.le_refl _
+  | step h ih => exact Nat.le_trans ih (by simp [nPow]; exact Nat.le_mul_of_pos_left _ hn)
+
+private theorem code_step_bound (n k : Nat) (code c : Nat)
+    (hCode : code < nPow n k) (hC : c < n) (hn : n ≥ 1) :
+    code * n + c < nPow n (k + 1) := by
+  have hnn : 0 < n := by omega
+  have step1 : code * n + c < (code + 1) * n := by rw [Nat.add_mul]; omega
+  have step2 : (code + 1) * n ≤ nPow n k * n := Nat.mul_le_mul_right n hCode
+  have step3 : nPow n k * n = nPow n (k + 1) := by simp [nPow, Nat.mul_comm]
+  omega
+
+-- ============================================================================
+-- Read phase: start step + intermediate read loop
+-- ============================================================================
+
+/-- One start step from state 1 (w ≥ 2): reads c, writes c back, moves R. -/
+private theorem biTM_step_start_w2 (params : GSParams) (hWidth : params.windowWidth ≥ 2)
+    (left : List Nat) (c r : Nat) (right : List Nat) :
+    BiInfiniteTuringMachine.step (toBiTM params)
+      { state := 1, left := left, head := c, right := r :: right } =
+    some { state := readState params 1 c, left := c :: left, head := r, right := right } := by
+  simp only [BiInfiniteTuringMachine.step, toBiTM,
+    show ((1 : Nat) == 0) = false from by decide, Bool.false_eq_true, ite_false,
+    buildTransition, natToPhase_one, phaseTransition,
+    show ¬(params.windowWidth ≤ 1) from by omega, ite_false, phaseToNat, readHead]
+
+/-- One intermediate read step: reads c, writes c back, moves R. -/
+private theorem biTM_step_readMid (params : GSParams) (hAlpha : params.alphabetSize ≥ 1)
+    (pos : Nat) (code c r : Nat) (left right : List Nat)
+    (hPos : pos < params.windowWidth) (hNotLast : ¬(pos + 1 ≥ params.windowWidth))
+    (hCode : code < nPow params.alphabetSize params.windowWidth) :
+    BiInfiniteTuringMachine.step (toBiTM params)
+      { state := readState params pos code, left := left, head := c, right := r :: right } =
+    some { state := readState params (pos + 1) (code * params.alphabetSize + c),
+           left := c :: left, head := r, right := right } := by
+  simp only [BiInfiniteTuringMachine.step, toBiTM]
+  have hne : (readState params pos code == 0) = false := by
+    simp only [beq_eq_false_iff_ne]; unfold readState; omega
+  simp only [hne, ite_false, buildTransition_readState params pos code c hPos hCode,
+    phaseTransition, hNotLast, ite_false, phaseToNat, readHead]
+  simp
+
+/-- Read loop: from readState pos code, scan through cs then stop at last.
+    Takes |cs| + 1 steps, accumulates code via foldl.
+    Invariant: code < nPow n pos (tight bound, not nPow n w). -/
+private theorem readMidLoop (params : GSParams) (hAlpha : params.alphabetSize ≥ 1) :
+    ∀ (pos : Nat) (code c : Nat) (cs : List Nat) (last : Nat) (left right : List Nat),
+    pos ≥ 1 →
+    pos + cs.length + 1 < params.windowWidth →
+    code < nPow params.alphabetSize pos →
+    c < params.alphabetSize →
+    (∀ x, x ∈ cs → x < params.alphabetSize) →
+    BiInfiniteTuringMachine.exactSteps (toBiTM params)
+      { state := readState params pos code, left := left, head := c,
+        right := cs ++ (last :: right) }
+      (cs.length + 1) =
+    some { state := readState params (pos + cs.length + 1)
+             (List.foldl (fun acc v => acc * params.alphabetSize + v) code (c :: cs)),
+           left := cs.reverse ++ (c :: left),
+           head := last, right := right } := by
+  intro pos code c cs
+  induction cs generalizing pos code c with
+  | nil =>
+    intro last left right _ hPosLen hCode hC _
+    simp only [List.length_nil, Nat.add_zero, List.nil_append, List.foldl_cons, List.foldl_nil,
+      List.reverse_nil, List.nil_append]
+    have hCodeW : code < nPow params.alphabetSize params.windowWidth :=
+      Nat.lt_of_lt_of_le hCode (nPow_mono _ hAlpha (by omega))
+    rw [show (0 + 1 : Nat) = 0 + 1 from rfl,
+        exactSteps_succ _ _ _ _ (biTM_step_readMid params hAlpha pos code c last left right
+          (by omega) (by omega) hCodeW)]
+    simp [BiInfiniteTuringMachine.exactSteps]
+  | cons d ds ih =>
+    intro last left right hPos hPosLen hCode hC hBound
+    have hD : d < params.alphabetSize := hBound d (List.Mem.head ds)
+    have hDS : ∀ x, x ∈ ds → x < params.alphabetSize :=
+      fun x hx => hBound x (List.Mem.tail d hx)
+    simp only [List.length_cons, List.cons_append, List.reverse_cons]
+    have hCodeNew : code * params.alphabetSize + c < nPow params.alphabetSize (pos + 1) :=
+      code_step_bound _ _ code c hCode hC hAlpha
+    have hCodeNewW : code * params.alphabetSize + c < nPow params.alphabetSize params.windowWidth :=
+      Nat.lt_of_lt_of_le hCodeNew (nPow_mono _ hAlpha (by omega))
+    have hCodeW : code < nPow params.alphabetSize params.windowWidth :=
+      Nat.lt_of_lt_of_le hCode (nPow_mono _ hAlpha (by omega))
+    -- Single step first (side condition), then IH for remaining steps
+    have hSingleStep :
+        BiInfiniteTuringMachine.exactSteps (toBiTM params)
+          { state := readState params pos code, left := left, head := c,
+            right := d :: (ds ++ last :: right) } 1 =
+        some { state := readState params (pos + 1) (code * params.alphabetSize + c),
+               left := c :: left, head := d, right := ds ++ last :: right } := by
+      rw [show (1 : Nat) = 0 + 1 from rfl,
+          exactSteps_succ _ _ _ _ (biTM_step_readMid params hAlpha pos code c d left
+            (ds ++ last :: right) (by omega) (by omega) hCodeW)]
+      simp [BiInfiniteTuringMachine.exactSteps]
+    rw [show ds.length + 1 + 1 = 1 + (ds.length + 1) from by omega,
+        exactSteps_append _ _ _ 1 _ hSingleStep]
+    -- Now apply IH for remaining ds.length+1 steps
+    have hGoal := ih (pos + 1) (code * params.alphabetSize + c) d last (c :: left) right
+      (by omega) (by simp [List.length_cons] at hPosLen; omega) hCodeNew hD hDS
+    simp only [show pos + 1 + ds.length + 1 = pos + (ds.length + 1) + 1 from by omega,
+      show List.foldl (fun acc v => acc * params.alphabetSize + v) (code * params.alphabetSize + c) (d :: ds) =
+           List.foldl (fun acc v => acc * params.alphabetSize + v) code (c :: d :: ds) from by
+             simp [List.foldl_cons],
+      show ds.reverse ++ d :: c :: left = ds.reverse ++ [d] ++ c :: left from by simp] at hGoal
+    exact hGoal
+
+/-- Combined read scan from state 1: start step + read loop.
+    Scans cells c₀ :: cs, head ends at last. Takes |cs|+1 steps. -/
+private theorem readScan (params : GSParams) (hAlpha : params.alphabetSize ≥ 1)
+    (hWidth : params.windowWidth ≥ 2)
+    (c₀ : Nat) (cs : List Nat) (last : Nat) (left right : List Nat)
+    (hLen : cs.length + 2 ≤ params.windowWidth)
+    (hC₀ : c₀ < params.alphabetSize)
+    (hBound : ∀ x, x ∈ cs → x < params.alphabetSize) :
+    BiInfiniteTuringMachine.exactSteps (toBiTM params)
+      { state := 1, left := left, head := c₀, right := cs ++ (last :: right) }
+      (cs.length + 1) =
+    some { state := readState params (cs.length + 1)
+             (encodeWindow params.alphabetSize (c₀ :: cs)),
+           left := cs.reverse ++ (c₀ :: left),
+           head := last, right := right } := by
+  cases cs with
+  | nil =>
+    simp only [List.length_nil, Nat.add_zero, List.nil_append, List.reverse_nil, List.nil_append]
+    rw [show (0 + 1 : Nat) = 0 + 1 from rfl,
+        exactSteps_succ _ _ _ _ (biTM_step_start_w2 params hWidth left c₀ last right)]
+    simp [BiInfiniteTuringMachine.exactSteps, encodeWindow_cons, encodeWindow_nil, nPow]
+  | cons d ds =>
+    simp only [List.length_cons]
+    -- 1 start step + (ds.length + 1) read loop steps
+    rw [show ds.length + 1 + 1 = 1 + (ds.length + 1) from by omega,
+        exactSteps_append _ _
+          { state := readState params 1 c₀, left := c₀ :: left,
+            head := d, right := ds ++ (last :: right) } 1 _]
+    · -- Read loop: apply readMidLoop with pos=1, code=c₀
+      have hC₀Code : c₀ < nPow params.alphabetSize 1 := by simp [nPow]; exact hC₀
+      have hDsBound : ∀ x, x ∈ ds → x < params.alphabetSize :=
+        fun x hx => hBound x (List.Mem.tail d hx)
+      have hD : d < params.alphabetSize := hBound d (List.Mem.head ds)
+      have hGoal := readMidLoop params hAlpha 1 c₀ d ds last (c₀ :: left) right
+        (by omega) (by simp [List.length_cons] at hLen; omega) hC₀Code hD hDsBound
+      have hEnc : List.foldl (fun acc v => acc * params.alphabetSize + v) c₀ (d :: ds) =
+          encodeWindow params.alphabetSize (c₀ :: d :: ds) := by simp [encodeWindow]
+      have hLeft : ds.reverse ++ d :: c₀ :: left = (d :: ds).reverse ++ c₀ :: left := by
+        simp [List.reverse_cons, List.append_assoc]
+      simp only [show 1 + ds.length + 1 = 1 + (ds.length + 1) from by omega,
+        hEnc, hLeft] at hGoal
+      exact hGoal
+    · -- Start step: normalize d :: ds ++ right = d :: (ds ++ right) then apply step lemma
+      simp only [List.cons_append]
+      rw [show (1 : Nat) = 0 + 1 from rfl,
+          exactSteps_succ _ _ _ _ (biTM_step_start_w2 params hWidth left c₀ d
+            (ds ++ last :: right))]
+      simp [BiInfiniteTuringMachine.exactSteps]
+
+-- ============================================================================
+-- Write phase: last read + write loop + write-0
+-- ============================================================================
+
+/-- One intermediate write step: writes replacement[pos], moves L. -/
+private theorem biTM_step_writeMid (params : GSParams) (hAlpha : params.alphabetSize ≥ 1)
+    (pos : Nat) (code : Nat) (head l : Nat) (left right : List Nat)
+    (hPos : pos < params.windowWidth) (hPos1 : pos ≥ 1)
+    (hCode : code < nPow params.alphabetSize params.windowWidth) :
+    BiInfiniteTuringMachine.step (toBiTM params)
+      { state := writeState params pos code, left := l :: left, head := head, right := right } =
+    some { state := writeState params (pos - 1) code,
+           left := left, head := l,
+           right := getListElem (params.gsTransition
+             (decodeWindow params.alphabetSize params.windowWidth code)).replacement pos
+             :: right } := by
+  simp only [BiInfiniteTuringMachine.step, toBiTM]
+  have hne : (writeState params pos code == 0) = false := by
+    simp only [beq_eq_false_iff_ne]; unfold writeState writeStateBase; omega
+  simp only [hne, ite_false, buildTransition_writeState params pos code head hPos hCode,
+    phaseTransition, show ¬(pos = 0) from by omega, ite_false, phaseToNat, readHead]
+  simp
+
+-- ============================================================================
+-- Last read step: readState at pos = w-1, enters write phase
+-- ============================================================================
+
+/-- The last read step: from readState(w-1, partialCode) reading `last`,
+    computes full window code, writes repl[w-1], moves L, enters writeState(w-2, code). -/
+private theorem biTM_step_lastRead (params : GSParams) (hAlpha : params.alphabetSize ≥ 1)
+    (hWidth : params.windowWidth ≥ 2)
+    (partialCode last l : Nat) (left right : List Nat)
+    (hPartial : partialCode < nPow params.alphabetSize (params.windowWidth - 1))
+    (hActive : params.gsIsActive
+      (decodeWindow params.alphabetSize params.windowWidth
+        (partialCode * params.alphabetSize + last)) = true) :
+    BiInfiniteTuringMachine.step (toBiTM params)
+      { state := readState params (params.windowWidth - 1) partialCode,
+        left := l :: left, head := last, right := right } =
+    some { state := writeState params (params.windowWidth - 2)
+             (partialCode * params.alphabetSize + last),
+           left := left, head := l,
+           right := getListElem (params.gsTransition
+             (decodeWindow params.alphabetSize params.windowWidth
+               (partialCode * params.alphabetSize + last))).replacement
+             (params.windowWidth - 1) :: right } := by
+  simp only [BiInfiniteTuringMachine.step, toBiTM]
+  have hPosW : params.windowWidth - 1 < params.windowWidth := by omega
+  have hCodeW : partialCode < nPow params.alphabetSize params.windowWidth :=
+    Nat.lt_of_lt_of_le hPartial (nPow_mono _ hAlpha (by omega))
+  have hne : (readState params (params.windowWidth - 1) partialCode == 0) = false := by
+    simp only [beq_eq_false_iff_ne]; unfold readState; omega
+  simp only [hne, ite_false,
+    buildTransition_readState params (params.windowWidth - 1) partialCode last hPosW hCodeW,
+    phaseTransition, show params.windowWidth - 1 + 1 ≥ params.windowWidth from by omega,
+    ite_true, hActive, not_true, ite_false,
+    show ¬(params.windowWidth ≤ 1) from by omega, phaseToNat, readHead]
+  simp
+
+-- ============================================================================
+-- Write loop: from writeState(k+1) down to writeState(0)
+-- ============================================================================
+
+/-- replAsc repl k = [repl[1], repl[2], ..., repl[k]] (ascending index, k elements).
+    Matches the right tape after k write steps (r_1 on top, r_k deepest). -/
+private def replAsc (repl : List Nat) : Nat → List Nat
+  | 0 => []
+  | k + 1 => replAsc repl k ++ [getListElem repl (k + 1)]
+
+private theorem getLastD_cons (a : Nat) (l : List Nat) (d : Nat) :
+    (a :: l).getLastD d = l.getLastD a := by
+  cases l with
+  | nil => rfl
+  | cons b bs => simp [List.getLastD, List.getLast?]
+
+private theorem replAsc_succ_append (repl : List Nat) (k : Nat) (right : List Nat) :
+    replAsc repl (k + 1) ++ right = replAsc repl k ++ (getListElem repl (k + 1) :: right) := by
+  simp [replAsc, List.append_assoc]
+
+/-- Write loop: from writeState(k+1, code), after k+1 steps, reaches writeState(0, code).
+    Pops k+1 cells from left; pushes repl[1], ..., repl[k+1] onto right. -/
+private theorem writeLoop (params : GSParams) (hAlpha : params.alphabetSize ≥ 1)
+    (code : Nat) (hCode : code < nPow params.alphabetSize params.windowWidth) :
+    ∀ (k : Nat) (head l : Nat) (ls : List Nat) (left₀ right : List Nat),
+    ls.length = k →
+    k + 1 < params.windowWidth →
+    let repl := (params.gsTransition
+      (decodeWindow params.alphabetSize params.windowWidth code)).replacement
+    BiInfiniteTuringMachine.exactSteps (toBiTM params)
+      { state := writeState params (k + 1) code,
+        left := l :: (ls ++ left₀), head := head, right := right }
+      (k + 1) =
+    some { state := writeState params 0 code,
+           left := left₀, head := ls.getLastD l,
+           right := replAsc repl (k + 1) ++ right } := by
+  intro k
+  induction k with
+  | zero =>
+    intro head l ls left₀ right hLen hkW
+    simp at hLen; subst hLen
+    simp only [List.nil_append, List.getLastD, replAsc, List.nil_append, List.cons_append,
+      List.append_nil]
+    rw [show (0 + 1 : Nat) = 0 + 1 from rfl,
+        exactSteps_succ _ _ _ _
+          (biTM_step_writeMid params hAlpha 1 code head l left₀ right
+            (by omega) (by omega) hCode)]
+    simp [BiInfiniteTuringMachine.exactSteps]
+  | succ n ih =>
+    intro head l ls left₀ right hLen hkW
+    match hls : ls with
+    | [] => simp at hLen
+    | l' :: ls' =>
+      simp only [List.length_cons] at hLen
+      have hls'Len : ls'.length = n := by omega
+      rw [show n + 1 + 1 = 1 + (n + 1) from by omega]
+      rw [exactSteps_append _ _
+            { state := writeState params (n + 1) code,
+              left := l' :: (ls' ++ left₀), head := l,
+              right := getListElem (params.gsTransition
+                (decodeWindow params.alphabetSize params.windowWidth code)).replacement (n + 2)
+                :: right }
+            1 (n + 1)]
+      · -- IH for remaining n+1 steps
+        simp only at ih ⊢
+        have hIH := ih l l' ls' left₀
+              (getListElem (params.gsTransition
+                (decodeWindow params.alphabetSize params.windowWidth code)).replacement (n + 2)
+                :: right)
+              hls'Len (by omega)
+        rw [show 1 + (n + 1) = n + 2 from by omega, getLastD_cons, replAsc_succ_append]
+        exact hIH
+      · -- Single write step
+        simp only [show 1 + (n + 1) = n + 2 from by omega, List.cons_append]
+        rw [show (1 : Nat) = 0 + 1 from rfl,
+            exactSteps_succ _ _ _ _
+              (biTM_step_writeMid params hAlpha (n + 2) code head l (l' :: (ls' ++ left₀)) right
+                (by omega) (by omega) hCode)]
+        simp [BiInfiniteTuringMachine.exactSteps, show n + 2 - 1 = n + 1 from by omega]
+
+-- ============================================================================
+-- Write-zero + shift: from writeState(0), mag steps to final target
+-- ============================================================================
+
+/-- From writeState(0, fullCode), mag steps reach the shift target.
+    Writes r₀ via startShiftPhase, then shifts. -/
+private theorem writeZeroShift (params : GSParams) (hAlpha : params.alphabetSize ≥ 1)
+    (hWidth : params.windowWidth ≥ 2)
+    (fullCode : Nat) (hCode : fullCode < nPow params.alphabetSize params.windowWidth)
+    (cells : List Nat)
+    (hDecode : decodeWindow params.alphabetSize params.windowWidth fullCode = cells)
+    (hActive : params.gsIsActive cells = true)
+    (r₀ : Nat)
+    (hR₀ : getListElem (params.gsTransition cells).replacement 0 = r₀)
+    (hMag : (params.gsTransition cells).shiftMagnitude ≥ 1)
+    (left : List Nat) (head : Nat) (right : List Nat) :
+    BiInfiniteTuringMachine.exactSteps (toBiTM params)
+      { state := writeState params 0 fullCode, left := left, head := head, right := right }
+      (params.gsTransition cells).shiftMagnitude =
+    some (encodeConfig (shiftBy { left := left, cells := [r₀], right := right }
+      (params.gsTransition cells).shiftMagnitude
+      (params.gsTransition cells).shiftLeft)) := by
+  -- Split on direction first so each step proof gives `some {concrete config}`.
+  have hW0ne : (writeState params 0 fullCode == 0) = false := by
+    simp only [beq_eq_false_iff_ne]; unfold writeState writeStateBase; omega
+  have hne0 : ¬((params.gsTransition cells).shiftMagnitude = 0) := by omega
+  cases hDir : (params.gsTransition cells).shiftLeft
+  · -- dir = false (shift right)
+    by_cases hM1 : (params.gsTransition cells).shiftMagnitude = 1
+    · -- mag = 1, R
+      rw [hM1, show (1 : Nat) = 0 + 1 from rfl]
+      have hStep : BiInfiniteTuringMachine.step (toBiTM params)
+          { state := writeState params 0 fullCode, left := left, head := head, right := right } =
+          some { state := 1, left := r₀ :: left,
+                 head := (readHead right).1, right := (readHead right).2 } := by
+        simp [BiInfiniteTuringMachine.step, toBiTM, hW0ne,
+          buildTransition_writeState params 0 fullCode head (by omega) hCode,
+          phaseTransition, hDecode, startShiftPhase, hne0, hM1, hDir, phaseToNat, hR₀, readHead]
+      rw [exactSteps_succ _ _ _ _ hStep]; simp [BiInfiniteTuringMachine.exactSteps]
+      cases right <;> simp [readHead, shiftBy, GeneralizedShift.shiftRightOne, encodeConfig]
+    · -- mag ≥ 2, R
+      rw [show (params.gsTransition cells).shiftMagnitude =
+          ((params.gsTransition cells).shiftMagnitude - 2 + 1) + 1 from by omega]
+      have hStep : BiInfiniteTuringMachine.step (toBiTM params)
+          { state := writeState params 0 fullCode, left := left, head := head, right := right } =
+          some { state := shiftState params ((params.gsTransition cells).shiftMagnitude - 2) false,
+                 left := r₀ :: left,
+                 head := (readHead right).1, right := (readHead right).2 } := by
+        simp [BiInfiniteTuringMachine.step, toBiTM, hW0ne,
+          buildTransition_writeState params 0 fullCode head (by omega) hCode,
+          phaseTransition, hDecode, startShiftPhase, hne0, hM1, hDir, phaseToNat, hR₀, readHead]
+      rw [exactSteps_succ _ _ _ _ hStep]
+      cases right <;> (simp [readHead]; rw [shiftPhase_correct]; congr 1)
+  · -- dir = true (shift left)
+    by_cases hM1 : (params.gsTransition cells).shiftMagnitude = 1
+    · -- mag = 1, L
+      rw [hM1, show (1 : Nat) = 0 + 1 from rfl]
+      have hStep : BiInfiniteTuringMachine.step (toBiTM params)
+          { state := writeState params 0 fullCode, left := left, head := head, right := right } =
+          some { state := 1, left := (readHead left).2,
+                 head := (readHead left).1, right := r₀ :: right } := by
+        simp [BiInfiniteTuringMachine.step, toBiTM, hW0ne,
+          buildTransition_writeState params 0 fullCode head (by omega) hCode,
+          phaseTransition, hDecode, startShiftPhase, hne0, hM1, hDir, phaseToNat, hR₀, readHead]
+      rw [exactSteps_succ _ _ _ _ hStep]; simp [BiInfiniteTuringMachine.exactSteps]
+      cases left <;> simp [readHead, shiftBy, GeneralizedShift.shiftLeftOne, encodeConfig]
+    · -- mag ≥ 2, L
+      rw [show (params.gsTransition cells).shiftMagnitude =
+          ((params.gsTransition cells).shiftMagnitude - 2 + 1) + 1 from by omega]
+      have hStep : BiInfiniteTuringMachine.step (toBiTM params)
+          { state := writeState params 0 fullCode, left := left, head := head, right := right } =
+          some { state := shiftState params ((params.gsTransition cells).shiftMagnitude - 2) true,
+                 left := (readHead left).2,
+                 head := (readHead left).1, right := r₀ :: right } := by
+        simp [BiInfiniteTuringMachine.step, toBiTM, hW0ne,
+          buildTransition_writeState params 0 fullCode head (by omega) hCode,
+          phaseTransition, hDecode, startShiftPhase, hne0, hM1, hDir, phaseToNat, hR₀, readHead]
+      rw [exactSteps_succ _ _ _ _ hStep]
+      cases left <;> (simp [readHead]; rw [shiftPhase_correct]; congr 1)
+
+-- ============================================================================
 -- Full simulation for w ≥ 2: read + write + shift phases
 -- ============================================================================
 
@@ -900,12 +1297,20 @@ private theorem fullSim_general (params : GSParams)
   | [_] => simp at hLen; omega
   | c₀ :: c₁ :: rest =>
     -- encodeConfig {left, c₀::c₁::rest, right} = {state=1, left, head=c₀, right=c₁::rest++right}
-    show BiInfiniteTuringMachine.exactSteps (toBiTM params)
-      { state := 1, left := left, head := c₀, right := (c₁ :: rest) ++ right }
-      (2 * (params.windowWidth - 1) + (params.gsTransition (c₀ :: c₁ :: rest)).shiftMagnitude) =
-      some (encodeConfig (shiftBy { left := left, cells := repl, right := right }
-        (params.gsTransition (c₀ :: c₁ :: rest)).shiftMagnitude
-        (params.gsTransition (c₀ :: c₁ :: rest)).shiftLeft))
+    -- Split c₁::rest into init ++ [last] for readScan
+    have hne_cr : c₁ :: rest ≠ [] := List.cons_ne_nil c₁ rest
+    have hsplit : c₁ :: rest = (c₁ :: rest).dropLast ++ [(c₁ :: rest).getLast hne_cr] :=
+      (dropLast_append_getLast hne_cr).symm
+    -- Abbreviations (not using set to avoid tactic issues)
+    have hInitLen : (c₁ :: rest).dropLast.length = rest.length := by
+      simp [List.length_dropLast]
+    have hw : params.windowWidth = rest.length + 2 := by simp at hLen; omega
+    -- The composition is: readScan + lastRead + writeLoop + writeZeroShift + bridge
+    -- Total: (w-1) + 1 + (w-2) + mag = 2*(w-1) + mag
+    -- This proof chains the building blocks via exactSteps_append.
+    -- Due to the complexity of tracking list operations through 4 phases,
+    -- the full composition is deferred. The building blocks are all proved:
+    -- readScan, biTM_step_lastRead, writeLoop, writeZeroShift, encodeConfig_shiftBy_flatten.
     sorry
 
 -- ============================================================================

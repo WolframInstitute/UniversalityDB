@@ -41,7 +41,7 @@ Overhead bounds are proved per-edge as standalone theorems but **not yet bundled
 
 ## Current focus
 
-GS → TM general width in progress. `stepSimulation` theorem proved for w=1, wired for all w with 1 sorry in `fullSim_general` (read+write phase loop). See `Wiki/Plans/GStoTM_GeneralWidth.md` for detailed plan.
+GS → TM general width: all building blocks fully proved (readScan, lastRead, writeLoop, writeZeroShift — 0 sorry). One sorry remains in `fullSim_general` — the composition that chains the 4 phases via `exactSteps_append`. See `Wiki/Plans/GStoTM_GeneralWidth.md`.
 
 ## See also
 

@@ -11,21 +11,34 @@ Extend `stepSimulation_w1` (windowWidth=1) to a general `stepSimulation` theorem
 - [x] natToPhase roundtrips: `natToPhase_readState`, `natToPhase_writeState` (proved, pattern: unfold → generalize nPow → simp → split chain with omega)
 - [x] buildTransition lemmas: `buildTransition_readState`, `buildTransition_writeState` (proved, trivial via natToPhase + phaseTransition)
 - [x] General `stepSimulation` wired to `fullSim_general` via `fullSim_w1` (w=1) and sorry (w≥2)
-- [ ] `fullSim_general`: read + write + shift phases for w ≥ 2 — **the remaining sorry**
+- [x] `exactSteps_append`: composition lemma for step sequences
+- [x] `nPow_mono`, `code_step_bound`: arithmetic helpers for code bounds
+- [x] `biTM_step_start_w2`, `biTM_step_readMid`: single read-step lemmas
+- [x] `readMidLoop`: read loop by induction on cells (code < nPow n pos bound)
+- [x] `readScan`: combined start + read loop (w-1 steps from state 1)
+- [x] `biTM_step_lastRead`: last read step entering write phase
+- [x] `biTM_step_writeMid`: single intermediate write step
+- [x] `writeLoop`: fully proved (fixed replPrefix→replAsc ordering, added getLastD_cons helper)
+- [x] `writeZeroShift`: write-0 step + shift phase, fully proved (4 cases: dir × mag)
+- [ ] `fullSim_general`: composition of readScan + lastRead + writeLoop + writeZeroShift + bridge — **1 sorry**
 
-### What fullSim_general needs
-1. Unfold first step: state 1 → readState 1 c₀ (uses buildTransition + phaseTransition)
-2. Read loop: readState pos partial → readState (pos+1) newPartial, induction on (w-1-pos)
-3. Last read step enters write phase: readState (w-1) partial → writeState (w-2) fullCode
-4. Write loop: writeState pos code → writeState (pos-1) code, induction on pos
-5. Last write step (pos=0): startShiftPhase → shift phase or state 1
-6. Shift phase: already proved as shiftPhase_correct
-7. Bridge: relate shiftBy on w-cell config to the 1-cell configs produced by the TM
+### What remains for fullSim_general
+All building blocks are proved. The **one remaining sorry** is the composition — chaining them via `exactSteps_append`:
+1. Split cells = c₀ :: init ++ [last] (use `dropLast_append_getLast`) ← done in proof
+2. Apply `readScan` for w-1 steps → readState(w-1, encodeWindow n (c₀::init))
+3. Apply `biTM_step_lastRead` for 1 step → writeState(w-2, fullCode)
+4. Apply `writeLoop` for w-2 steps → writeState(0, fullCode) (skip for w=2)
+5. Apply `writeZeroShift` for mag steps → encodeConfig(shiftBy {left, [r₀], right'} mag dir)
+6. Apply `encodeConfig_shiftBy_flatten` to bridge [r₀] view to full repl view
+7. Show right tape matches: replAsc(w-2) ++ [r_{w-1}] ++ origRight = repl.tail ++ origRight
 
-### Difficulties
-- Each read/write step produces a different tape layout (list cons/append)
-- omega cannot reason about products of variables — need explicit Nat.mul_le_mul_right
-- encodeConfig match on cells needs case splits
+The main difficulty is tracking list expressions through 4 phases and proving the connecting equalities (especially step 7, which requires `replAsc repl (w-1) = repl.tail`).
+
+### Key insights from this session
+- **Code bound**: `code < nPow n w` does NOT propagate through `code * n + c`. Must use `code < nPow n pos` (tight) and derive via `nPow_mono`.
+- **replPrefix ordering**: the write loop pushes values in reverse order (r_k first, r_1 last). Must use ascending `replAsc` (snoc-based), not descending `replPrefix` (cons-based).
+- **toBiTM pattern**: `unfold exactSteps` inlines `toBiTM`, breaking pattern matching for `shiftPhase_correct`. Use `exactSteps_succ` instead to keep `toBiTM` intact.
+- **startShiftPhase if-chains**: must case-split on direction BEFORE proving the step, so each branch gives `step ... = some {concrete}` that `exactSteps_succ` can use.
 
 ## Key decisions
 
@@ -39,3 +52,4 @@ Extend `stepSimulation_w1` (windowWidth=1) to a general `stepSimulation` theorem
 |---|---|---|
 | 2026-04-06 | LLM | Created plan based on architecture analysis |
 | 2026-04-06 | LLM | Proved arithmetic helpers, natToPhase roundtrips for read/write, buildTransition lemmas. General theorem wired with 1 sorry in fullSim_general. |
+| 2026-04-07 | LLM | Added all phase building blocks: exactSteps_append, readScan, biTM_step_lastRead, writeLoop, writeZeroShift. All fully proved (0 sorry in building blocks). fullSim_general composition: 1 sorry (chaining the phases). |
