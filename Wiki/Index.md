@@ -12,6 +12,7 @@ Knowledge base for the Universality Graph project. Maintained by the LLM after e
 - [Current Focus](Plans/CurrentFocus.md) — closing GS → TM last sorry
 - [GS→TM General Width](Plans/GStoTM_GeneralWidth.md) — extending step simulation to all window widths
 - [Next Edges](Plans/NextEdges.md) — candidates for the next formalization target
+- [Action Items](Plans/ActionItems.md) — next steps and TODOs
 
 
 ## Tour
