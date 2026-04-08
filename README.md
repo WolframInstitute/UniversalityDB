@@ -7,6 +7,7 @@ This is to demonstrate that LLMs can autonomously push the boundary of mathemati
 - ⚙️ **Computational engine** — [Wolfram](https://www.wolfram.com/language/) link to prototype and test on finite examples
 - 📚 **Knowledge base** — a growing structured knowledge of the previous work (universality graph, wiki)
 - 🧠 **Expert guidance** — high-level guidance by members of the Wolfram Institute
+- 🤖 **Agentic team member** — autonomous agent homed at a Wolfram Institute server autonomously maintaining the repo and extending the research (TBD)
 
 The generated data is organized as a **universality graph**: vertices are computational systems (Turing machines, cellular automata, tag systems, generalized shifts, ...) and directed edges are simulation encodings (weighted by overhead). We introduce this structure to empirically study the simulability landscape across simple machines in the spirit of Wolfram's [metamathematics project](https://www.wolframphysics.org/bulletins/2022/10/physicalization-of-metamathematics/) and [principle of computational equivalence](https://www.wolframscience.com/nks/p715/).
 
@@ -51,6 +52,8 @@ leanblueprint web                      # build interactive Blueprint
 ## 🤝 Contributing
 
 We want to maximally utilize LLMs for keeping structure and writing proofs with only high-level human interaction. The full workflow is described in [CLAUDE.md](CLAUDE.md).
+
+See the [action items](Wiki/Plans/ActionItems.md) for next steps.
 
 ## 📄 License
 
