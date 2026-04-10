@@ -379,6 +379,7 @@ When the user returns and says "continue tour" or "where were we":
 
 | Command | Purpose |
 |---|---|
+| `Scripts/verify_integrity.sh` | Proof integrity checks + build |
 | `cd Lean && lake build` | Build Lean project |
 | `Scripts/generate_notebooks.wls` | Convert `Wiki/Notebooks/*.md` → `Notebooks/*.nb` locally |
 | `Scripts/publish_notebooks.wls` | Convert + upload to Wolfram Cloud |
@@ -398,6 +399,50 @@ When the user returns and says "continue tour" or "where were we":
 **Key types:** `CompSystem` (Config + step), `Simulation A B` (encode + decode + roundtrip + commutes), `Overhead` (spatial + temporal), `Graph.Edge`
 
 **Common tactics:** `native_decide`, `fin_cases`, `decide`, `omega`, `sorry`
+
+## Proof integrity
+
+These rules govern all Lean proof work. They close the known escape hatches by which an LLM-generated proof could type-check but be meaningless.
+
+**Rule 1 — Locked goals.** Do not modify theorem type signatures in `Lean/Proofs/` without explicit human approval.
+
+**Rule 2 — Locked dependencies.** Do not change definitions referenced by locked theorems without explicit human approval. Locked definitions include: `ComputationalMachine`, `SimulationEncoding`, `Overhead`, all machine `Config`/`step` types (`BiInfiniteTuringMachine.Configuration`, `BiInfiniteTuringMachine.step`, `GeneralizedShift.Configuration`, `GeneralizedShift.step`, `Tag`, `Tag.step`, `CyclicTagSystem`, `CyclicTagSystem.step`, `ElementaryCellularAutomaton.step`, `ElementaryCellularAutomaton.ruleTable`), named machines (`wolfram23`, `rule110`, `rule124`, `rule137`), and proof-level types (`Halts`, `IsUniversal`, `CockeMinskyStepSimulation`, `SmithSimulation`). Refactoring (renaming, moving between files) is fine; changing logical content is not.
+
+**Rule 3 — No custom axioms.** No `axiom` declarations anywhere in `Lean/`. The only axioms permitted are those shipped with Lean's core library. If a result depends on an unproved claim, state it as a hypothesis parameter in the theorem's type signature so the dependency is visible.
+
+**Rule 3a — No unsafe.** No `unsafe def` or `unsafe instance` anywhere in `Lean/`.
+
+**Rule 3b — No @[implemented_by] or @[extern].** No `@[implemented_by]` or `@[extern]` attributes anywhere in `Lean/`. Both replace a function's compiled implementation — `@[implemented_by]` with Lean code, `@[extern]` with C code — and can make `native_decide` see a different function than what appears in the source.
+
+**Rule 4 — No sorry or admit in finished proofs.** Every `sorry` or `admit` must be tracked in `Wiki/Status.md` with file path, line number, theorem name, and reason. Do not mask sorry by wrapping it in helper lemmas.
+
+**Rule 5 — native_decide policy.** Prefer `decide` (kernel-verified) over `native_decide` (compiled, not kernel-checked). `native_decide` is permitted for larger finite checks where `decide` is too slow. Each use should have context making clear what finite type is being exhausted. `native_decide` must not be the sole proof of a universally quantified claim over an unbounded type. Custom `Decidable` instances must be flagged for human review.
+
+**Rule 6 — No kernel-weakening options.** No `set_option` calls that affect what the kernel accepts. Performance knobs (`maxHeartbeats`) and display options (`pp.all`, `pp.proofs`) are fine.
+
+**Rule 7 — No removing proved results.** Do not delete or weaken an existing proved theorem without human approval. Adding, generalizing, and refactoring are fine.
+
+**Rule 8 — Do not modify verification infrastructure.** `Lean/Integrity.lean` and `Scripts/verify_integrity.sh` must not be modified without human approval. These enforce the rules above — weakening them defeats the purpose.
+
+**Verification:** Run `Scripts/verify_integrity.sh`. This uses Lean's own tools — no grep or string parsing. `Integrity.lean` uses `CollectAxioms.collect` to programmatically trace axiom dependencies of every key theorem. `leanchecker` replays all declarations through the kernel. Sorry is counted from `lake build` warnings. See `Wiki/Concepts/ProofIntegrity.md` for the full trust model.
+
+**When adding a new module:** Add to `Lean/lakefile.lean` roots AND `Lean/Integrity.lean` imports. The verification script checks these are in sync and fails if they diverge. The `leanchecker` module list is derived from `lakefile.lean` automatically.
+
+**When adding a new proof:** Add the main theorem(s) to the `keyTheorems` list in `Lean/Integrity.lean`. This is the list of theorems whose axiom dependencies are checked. A new proof not added here will still be compiled and kernel-replayed, but its axiom closure won't be explicitly verified.
+
+**When adding a new machine family:** Add a cross-validation section to `Wiki/Notebooks/CrossValidation.md` comparing the Lean definition against its Wolfram counterpart (see existing sections for format).
+
+## Workflow safeguards
+
+**Protect user-revised content.** If the user has explicitly written or edited a file (code, plans, config), do not silently overwrite it. Describe the proposed change and wait for approval.
+
+**No looping.** If a proof attempt fails three times with the same approach, stop and report what was tried, why it failed, and what the obstacle is. Do not retry the same tactic sequence or introduce speculative helper lemmas that don't address the root cause.
+
+**No re-finalizing.** Once a proof or definition is complete (zero sorry, builds clean, user approved), do not modify it unless the user requests a change, a new proof requires a generalization (which requires approval per Rule 2), or a build breakage requires a fix.
+
+**No hidden hypotheses.** Every unproved assumption must be visible in the theorem's type signature. Do not bury hypotheses in `variable` blocks that are easy to overlook. When presenting results, explicitly state what is proved and what is assumed.
+
+**Track all state changes.** After every substantial step, update `Wiki/Status.md` (what's proved, sorry'd, next), `Wiki/Log.md` (what was done, when), and the sorry inventory.
 
 ## LeanLink loading
 

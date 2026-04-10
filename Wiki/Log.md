@@ -2,6 +2,7 @@
 
 | Date | Actor | Action |
 |---|---|---|
+| 2026-04-10 | LLM | Added proof integrity system: rules in CLAUDE.md, trust model in Wiki/Concepts/ProofIntegrity.md, Lean/Integrity.lean (CollectAxioms + leanchecker), Scripts/verify_integrity.sh, CrossValidation notebook, updated Status.md with full inventories, updated README |
 | 2026-04-08 | LLM | Added agentic team member to README, created Wiki/Plans/ActionItems.md with next steps |
 | 2026-04-06 | LLM | GS→TM general width: TMPhase refactor, bridge lemma proved, stepSimulation wired for all w. 1 sorry remains in read+write phase loop (fullSim_general). |
 | 2026-04-06 | LLM | Updated wiki (Status, GStoTM, Moore1991) for accurate overhead/w=1 status; updated Wolfram graph edges (added Tag→CTS, fixed GS→TM τ); updated README with verified-edges table |
