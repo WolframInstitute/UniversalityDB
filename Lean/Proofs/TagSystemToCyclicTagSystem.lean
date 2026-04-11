@@ -12,6 +12,7 @@
 -/
 
 import Machines.TagSystem.Defs
+import SimulationEncoding
 
 namespace TagSystem
 
@@ -574,5 +575,33 @@ theorem simulationExample3 :
       (tagConfigurationToCyclicTagSystem 2 [⟨0, by omega⟩, ⟨0, by omega⟩, ⟨1, by omega⟩, ⟨1, by omega⟩]) 4 =
     some (tagConfigurationToCyclicTagSystem 2 [⟨1, by omega⟩, ⟨1, by omega⟩, ⟨1, by omega⟩, ⟨0, by omega⟩]) := by
   native_decide
+
+-- ============================================================================
+-- Generic Simulation instance (Cook's encoding, Tag → CTS)
+-- ============================================================================
+
+/-- One tag step corresponds to 2k CTS steps, lifted to `iterationStep`. -/
+theorem tagToCTSCommutes {k : Nat} (ts : Tag k) (hk : k > 0)
+    (config config' : TagConfiguration k)
+    (h_step : ts.step config = some config') :
+    ∃ n, (CyclicTagSystem.toComputationalMachine (tagToCyclicTagSystem ts hk)).iterationStep n
+      (tagConfigurationToCyclicTagSystem k config) =
+      some (tagConfigurationToCyclicTagSystem k config') :=
+  ⟨2 * k, by
+    rw [CyclicTagSystem.iterationStep_eq_exactSteps]
+    exact tagToCyclicTagSystemSimulation ts hk config config' h_step⟩
+
+/-- Tag → CTS as a `Simulation`.
+    The `halting` field requires `sorry`: a halted single-element tag word `[a]`
+    maps to a CTS config with `k` bits of data, which does NOT immediately halt.
+    Full halting preservation requires `Tag.HaltsEmpty` (reaching the empty word),
+    proved separately in `tagToCyclicTagSystemHaltingForward`. -/
+def tagToCTSSimulation {k : Nat} (ts : Tag k) (hk : k > 0) :
+    ComputationalMachine.Simulation
+      (CyclicTagSystem.toComputationalMachine (tagToCyclicTagSystem ts hk))
+      (ts.toComputationalMachine) where
+  encode := tagConfigurationToCyclicTagSystem k
+  commutes := tagToCTSCommutes ts hk
+  halting := by intro config h_step; sorry
 
 end TagSystem

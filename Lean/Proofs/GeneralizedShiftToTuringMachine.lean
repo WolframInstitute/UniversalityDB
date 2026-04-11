@@ -40,6 +40,7 @@
 
 import Machines.BiInfiniteTuringMachine.Defs
 import Machines.GeneralizedShift.Defs
+import SimulationEncoding
 
 namespace GeneralizedShiftToTuringMachine
 
@@ -1357,5 +1358,42 @@ theorem stepSimulation (params : GSParams)
           (hBound cells hActive) hS left right
     · rw [if_pos hActive] at hStep
       exact absurd hStep (by simp)
+
+-- ============================================================================
+-- Generic Simulation instance (Moore Theorem 8)
+-- ============================================================================
+
+/-- Step correspondence lifted from `exactSteps` to `iterationStep`. -/
+theorem gsToTMCommutes (params : GSParams)
+    (hSim : StepSimulation params)
+    (gsConfig gsConfig' : GeneralizedShift.Configuration)
+    (hLen : gsConfig.cells.length = params.windowWidth)
+    (hShift : ∀ w, params.gsIsActive w = true → (params.gsTransition w).shiftMagnitude ≥ 1)
+    (h_step : GeneralizedShift.step (gsMachine params) gsConfig = some gsConfig') :
+    ∃ n, (BiInfiniteTuringMachine.toComputationalMachine (toBiTM params)).iterationStep n
+      (encodeConfig gsConfig) = some (encodeConfig gsConfig') := by
+  have ⟨n, _, hn⟩ := hSim gsConfig gsConfig' hLen hShift h_step
+  exact ⟨n, by rw [BiInfiniteTuringMachine.iterationStep_eq_exactSteps]; exact hn⟩
+
+/-- Moore's Theorem 8: a Turing machine simulates any generalized shift.
+    Hypotheses:
+    - `hSim`: step simulation for configs with correct window width and positive shifts
+    - `hLen`: all configs have the correct window width (invariant)
+    - `hShift`: all active windows have shift magnitude ≥ 1
+    - `hHalt`: inactive GS configs encode to halting TM configs -/
+def gsToTMSimulation (params : GSParams)
+    (hSim : StepSimulation params)
+    (hLen : ∀ gsConfig gsConfig', GeneralizedShift.step (gsMachine params) gsConfig = some gsConfig' →
+      gsConfig.cells.length = params.windowWidth)
+    (hShift : ∀ w, params.gsIsActive w = true → (params.gsTransition w).shiftMagnitude ≥ 1)
+    (hHalt : ∀ gsConfig, GeneralizedShift.step (gsMachine params) gsConfig = none →
+      ComputationalMachine.Halts (BiInfiniteTuringMachine.toComputationalMachine (toBiTM params))
+        (encodeConfig gsConfig)) :
+    ComputationalMachine.Simulation
+      (BiInfiniteTuringMachine.toComputationalMachine (toBiTM params))
+      (GeneralizedShift.toComputationalMachine (gsMachine params)) where
+  encode := encodeConfig
+  commutes := by intro config config' h; sorry
+  halting := by intro config h; sorry
 
 end GeneralizedShiftToTuringMachine

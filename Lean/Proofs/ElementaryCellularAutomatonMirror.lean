@@ -8,6 +8,7 @@
 -/
 
 import Machines.ElementaryCellularAutomaton.Defs
+import SimulationEncoding
 
 namespace ElementaryCellularAutomaton
 
@@ -78,5 +79,55 @@ theorem mirrorSimulationSteps (n k : Nat) (hn : n ≥ 3) (tape : Fin n → Fin 2
     simp [iterate]
     rw [ih]
     exact mirrorSimulationGeneral n hn (iterate rule124 n tape k)
+
+-- ============================================================================
+-- Simulation instance: Rule 110 ↔ Rule 124 via tape reversal
+-- ============================================================================
+
+theorem rule110CommutesRule124 (n : Nat) (hn : n ≥ 3)
+    (config config' : Fin n → Fin 2)
+    (h : step rule124 n config = config') :
+    ∃ m, (toComputationalMachine rule110 n).iterationStep m
+      (reverseTape n config) = some (reverseTape n config') :=
+  ⟨1, by simp [ComputationalMachine.iterationStep, toComputationalMachine,
+               mirrorSimulationGeneral n hn config, h]⟩
+
+theorem rule124CommutesRule110 (n : Nat) (hn : n ≥ 3)
+    (config config' : Fin n → Fin 2)
+    (h : step rule110 n config = config') :
+    ∃ m, (toComputationalMachine rule124 n).iterationStep m
+      (reverseTape n config) = some (reverseTape n config') := by
+  have hmirror : step rule124 n (reverseTape n config) =
+      reverseTape n (step rule110 n config) := by
+    have h1 := mirrorSimulationGeneral n hn (reverseTape n config)
+    rw [reverseTapeInvolutive n (by omega) config] at h1
+    have h2 := congrArg (reverseTape n) h1
+    simp [reverseTapeInvolutive n (by omega)] at h2
+    exact h2.symm
+  exact ⟨1, by simp [ComputationalMachine.iterationStep, toComputationalMachine, hmirror, h]⟩
+
+/-- ECA never halts (step is total), so the halting condition is vacuously true. -/
+theorem ecaStepNeverNone (rule : Fin 2 → Fin 2 → Fin 2 → Fin 2) (n : Nat)
+    (config : Fin n → Fin 2) :
+    (toComputationalMachine rule n).step config ≠ none := by
+  simp [toComputationalMachine]
+
+/-- Rule 110 simulates Rule 124 via tape reversal. -/
+def rule110SimulatesRule124 (n : Nat) (hn : n ≥ 3) :
+    ComputationalMachine.Simulation
+      (toComputationalMachine rule110 n)
+      (toComputationalMachine rule124 n) where
+  encode := reverseTape n
+  commutes config config' h := rule110CommutesRule124 n hn config config' (by simpa [toComputationalMachine] using h)
+  halting config h := absurd h (ecaStepNeverNone rule124 n config)
+
+/-- Rule 124 simulates Rule 110 via tape reversal. -/
+def rule124SimulatesRule110 (n : Nat) (hn : n ≥ 3) :
+    ComputationalMachine.Simulation
+      (toComputationalMachine rule124 n)
+      (toComputationalMachine rule110 n) where
+  encode := reverseTape n
+  commutes config config' h := rule124CommutesRule110 n hn config config' (by simpa [toComputationalMachine] using h)
+  halting config h := absurd h (ecaStepNeverNone rule110 n config)
 
 end ElementaryCellularAutomaton

@@ -31,6 +31,7 @@
 -/
 
 import Machines.TuringMachine.Defs
+import ComputationalMachine
 
 namespace GeneralizedShift
 
@@ -82,6 +83,39 @@ def shiftBy (config : Configuration) (magnitude : Nat) (goLeft : Bool) : Configu
     let config' := if goLeft then shiftLeftOne config else shiftRightOne config
     shiftBy config' n goLeft
 
+/-- Strip trailing zeros from a tape (far-end blank cells).
+    This normalizes the tape representation so that `[]` and `[0]` are
+    not distinguished (both represent blank tape at infinity). -/
+def stripTrailingZeros : List Nat → List Nat
+  | [] => []
+  | x :: xs =>
+    let tail := stripTrailingZeros xs
+    if tail.isEmpty && x == 0 then [] else x :: tail
+
+@[simp] theorem stripTrailingZeros_nil : stripTrailingZeros ([] : List Nat) = [] := rfl
+
+theorem stripTrailingZeros_idempotent (xs : List Nat) :
+    stripTrailingZeros (stripTrailingZeros xs) = stripTrailingZeros xs := by
+  induction xs with
+  | nil => rfl
+  | cons x xs' ih =>
+    simp only [stripTrailingZeros]
+    split
+    · simp [stripTrailingZeros]
+    · rename_i h; simp [stripTrailingZeros, ih, h]
+
+@[simp] theorem stripTrailingZeros_reconstruct (xs : List Nat) :
+    stripTrailingZeros
+      ((match xs with | [] => 0 | l :: _ => l) :: xs.tail) =
+    stripTrailingZeros xs := by
+  cases xs with
+  | nil => simp [stripTrailingZeros]
+  | cons _ _ => rfl
+
+theorem stripTrailingZeros_cons_strip (a : Nat) (xs : List Nat) :
+    stripTrailingZeros (a :: stripTrailingZeros xs) = stripTrailingZeros (a :: xs) := by
+  simp only [stripTrailingZeros, stripTrailingZeros_idempotent]
+
 def step (machine : Machine) (config : Configuration) : Option Configuration :=
   if ¬ machine.isActive config.cells then none
   else
@@ -106,5 +140,20 @@ def evaluate (machine : Machine) (config : Configuration) : Nat → Option Confi
 
 def Halts (machine : Machine) (config : Configuration) : Prop :=
   ∃ fuel result, evaluate machine config fuel = some result
+
+def toComputationalMachine (machine : Machine) : ComputationalMachine where
+  Configuration := Configuration
+  step := step machine
+
+theorem iterationStep_eq_exactSteps (machine : Machine) (config : Configuration) (n : Nat) :
+    (toComputationalMachine machine).iterationStep n config = exactSteps machine config n := by
+  induction n generalizing config with
+  | zero => rfl
+  | succ n ih =>
+    simp [ComputationalMachine.iterationStep, toComputationalMachine, exactSteps]
+    cases step machine config with
+    | none => rfl
+    | some config' => exact ih config'
+
 
 end GeneralizedShift
