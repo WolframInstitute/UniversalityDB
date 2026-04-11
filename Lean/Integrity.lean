@@ -52,14 +52,23 @@ private def keyTheorems : List Name := [
   -- Moore Theorem 7: TM → GS
   `TuringMachineToGeneralizedShift.stepCommutes,
   `TuringMachineToGeneralizedShift.decodeEncode,
+  `TuringMachineToGeneralizedShift.tmToGSSimulation,
   -- Moore Theorem 8: GS → TM
   `GeneralizedShiftToTuringMachine.stepSimulation,
+  `GeneralizedShiftToTuringMachine.gsToTMSimulation,
   -- Cook 2004: Tag → CTS
   `TagSystem.tagToCyclicTagSystemHaltingForward,
+  `TagSystem.tagToCTSSimulation,
   -- Cocke-Minsky chain: wolfram23 universal
   `BiInfiniteTuringMachine.wolfram23Universal,
+  `BiInfiniteTuringMachine.wolfram23HaltingSimulation,
   -- ECA mirror: Rule 110 ↔ Rule 124
-  `ElementaryCellularAutomaton.mirrorSimulationSteps
+  `ElementaryCellularAutomaton.mirrorSimulationSteps,
+  `ElementaryCellularAutomaton.rule110SimulatesRule124,
+  `ElementaryCellularAutomaton.rule124SimulatesRule110,
+  -- Simulation framework
+  `ComputationalMachine.Simulation.halting_preserved,
+  `ComputationalMachine.Simulation.compose
 ]
 
 /-- Spot-check theorems (native_decide axioms expected here). -/

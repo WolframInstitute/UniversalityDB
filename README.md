@@ -25,20 +25,22 @@ The generated data is organized as a **universality graph**: vertices are comput
 
 Browse the **[knowledge base](Wiki/Index.md)** for articles on every system, proof, and resource in the project.
 
-## ✅ Lean-Verified Edges (0 sorry)
+## ✅ Lean-Verified Simulation Edges
 
-| Edge | Overhead | Reference |
-|---|---|---|
-| TM → Generalized Shift | σ=1, τ=1 | Moore 1991, Thm 7 |
-| Generalized Shift → TM | σ=1, τ≤2(w−1)+m | Moore 1991, Thm 8 (proved for w=1) |
-| 2-Tag → Cyclic Tag System | σ=k (one-hot), τ=2k | Cook 2004 |
-| ECA Rule 110 ↔ Rule 124 | σ=1, τ=1 | Tape reversal mirror |
+All edges use a generic `Simulation` template (`Lean/SimulationEncoding.lean`) — the type checker guarantees correctness of each simulation statement. Each proof file has standalone lemmas assembled into the template.
+
+| Edge | Overhead | Template | Reference | Sorry |
+|---|---|---|---|---|
+| TM → Generalized Shift | σ=1, τ=1 | `Simulation` | Moore 1991, Thm 7 | 0 |
+| Generalized Shift → TM | σ=1, τ≤2(w−1)+m | `Simulation` | Moore 1991, Thm 8 | 1 (w≥2 composition) |
+| 2-Tag → Cyclic Tag System | σ=k (one-hot), τ=2k | `Simulation` | Cook 2004 | 1 (halting for |word|=1) |
+| ECA Rule 110 ↔ Rule 124 | σ=1, τ=1 | `Simulation` | Tape reversal | 0 |
 
 ### Proved modulo explicit hypotheses
 
-| Theorem | Hypotheses | Reference |
-|---|---|---|
-| Wolfram's (2,3) TM is universal | Cocke-Minsky step simulation, Smith CTS→(2,3) simulation | Cocke-Minsky 1964 + Cook 2004 + Smith 2007 |
+| Theorem | Template | Hypotheses | Reference |
+|---|---|---|---|
+| Wolfram's (2,3) TM is universal | `HaltingSimulation` | `CockeMinskyStepSimulation`, `SmithSimulation` | Cocke-Minsky 1964 + Cook 2004 + Smith 2007 |
 
 ## Verification
 
