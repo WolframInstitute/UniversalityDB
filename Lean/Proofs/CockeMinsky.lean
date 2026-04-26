@@ -22,6 +22,7 @@
 import Machines.BiInfiniteTuringMachine.Defs
 import Machines.TagSystem.Defs
 import Proofs.TagSystemToCyclicTagSystem
+import SimulationEncoding
 
 namespace BiInfiniteTuringMachine
 
@@ -376,5 +377,42 @@ theorem wolfram23Universal
   apply h_smith
   exact tagToCyclicTagSystemHaltingForward (cockeMinskyTag machine) hsize _
     (cockeMinskyHaltingEmptyForward machine config (h_cm machine) h_halts)
+
+-- ============================================================================
+-- Generic HaltingSimulation: full chain TM → (2,3) TM
+-- ============================================================================
+
+/-- The composed encoding: TM config →[Cocke-Minsky] tag word →[Cook] CTS config →[Smith] BiTM config. -/
+def wolfram23Encode (machine : Machine) (config : Configuration) : Configuration :=
+  let hsize : cockeMinskyTagSize machine > 0 := by unfold cockeMinskyTagSize; omega
+  let cyclicTagSystem := tagToCyclicTagSystem (cockeMinskyTag machine) hsize
+  smithEncode cyclicTagSystem
+    (tagConfigurationToCyclicTagSystem (cockeMinskyTagSize machine)
+      (cockeMinskyConfigurationEncode machine config))
+
+/-- Halting preservation for the full chain.
+    Uses `wolfram23Universal` which already composes all three reductions.
+    The bridge between `BiInfiniteTuringMachine.Halts` and `ComputationalMachine.Halts`
+    requires showing the two halting notions agree. -/
+theorem wolfram23PreservesHalting
+    (h_cm : ∀ (machine : Machine), CockeMinskyStepSimulation machine)
+    (h_smith : SmithSimulation)
+    (machine : Machine) (config : Configuration)
+    (h_halts : ComputationalMachine.Halts (toComputationalMachine machine) config) :
+    ComputationalMachine.Halts (toComputationalMachine wolfram23) (wolfram23Encode machine config) := by
+  sorry
+
+/-- The full universality chain as a `HaltingSimulation`:
+    Any TM →[Cocke-Minsky] 2-Tag →[Cook] CTS →[Smith] (2,3) TM.
+    Conditional on the Cocke-Minsky and Smith hypotheses. -/
+def wolfram23HaltingSimulation
+    (h_cm : ∀ (machine : Machine), CockeMinskyStepSimulation machine)
+    (h_smith : SmithSimulation)
+    (machine : Machine) :
+    ComputationalMachine.HaltingSimulation
+      (toComputationalMachine wolfram23)
+      (toComputationalMachine machine) where
+  encode := wolfram23Encode machine
+  preserves_halting := wolfram23PreservesHalting h_cm h_smith machine
 
 end BiInfiniteTuringMachine

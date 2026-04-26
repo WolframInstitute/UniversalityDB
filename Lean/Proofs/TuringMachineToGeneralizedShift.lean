@@ -47,6 +47,7 @@
 
 import Machines.BiInfiniteTuringMachine.Defs
 import Machines.GeneralizedShift.Defs
+import SimulationEncoding
 
 namespace TuringMachineToGeneralizedShift
 
@@ -466,5 +467,58 @@ theorem mooreHaltingForward (machine : TuringMachine.Machine) (config : BiInfini
         rw [hStep] at hEval
         have ⟨n, hn⟩ := hSimulation config config' hStep
         exact gsHaltsAfterExactSteps _ _ _ n hn (ih config' hEval)
+
+-- ============================================================================
+-- Generic Simulation instance (Moore Theorem 7)
+-- ============================================================================
+
+/-- The step simulation property lifts from `exactSteps` to `iterationStep`. -/
+theorem mooreCommutes (machine : TuringMachine.Machine)
+    (hSim : MooreStepSimulation machine)
+    (config config' : BiInfiniteTuringMachine.Configuration)
+    (h_step : BiInfiniteTuringMachine.step machine config = some config') :
+    ∃ n, (GeneralizedShift.toComputationalMachine (fromBiTM machine)).iterationStep n
+      (encodeBiTM machine config) = some (encodeBiTM machine config') := by
+  have ⟨n, hn⟩ := hSim config config' h_step
+  exact ⟨n, by rw [GeneralizedShift.iterationStep_eq_exactSteps]; exact hn⟩
+
+/-- When a BiTM halts (state = 0), the encoded GS config is inactive and also halts. -/
+theorem mooreHaltingEncoded (machine : TuringMachine.Machine)
+    (hHead : ∀ config : BiInfiniteTuringMachine.Configuration,
+      config.state = 0 → config.head < machine.numberOfSymbols)
+    (config : BiInfiniteTuringMachine.Configuration)
+    (h_step : BiInfiniteTuringMachine.step machine config = none) :
+    ComputationalMachine.Halts
+      (GeneralizedShift.toComputationalMachine (fromBiTM machine))
+      (encodeBiTM machine config) := by
+  have hState : config.state = 0 := by
+    cases hs : config.state with
+    | zero => rfl
+    | succ n =>
+      exfalso
+      unfold BiInfiniteTuringMachine.step at h_step
+      split at h_step
+      · next hbeq => exact absurd (eq_of_beq hbeq) (by omega)
+      · dsimp at h_step; split at h_step <;> simp at h_step
+  have hlt := hHead config hState
+  exact ComputationalMachine.Halts_of_step_none (by
+    show GeneralizedShift.step (fromBiTM machine) (encodeBiTM machine config) = none
+    simp [GeneralizedShift.step, fromBiTM, encodeBiTM, hState,
+          show ¬ (config.head ≥ machine.numberOfSymbols) from by omega])
+
+/-- Moore's Theorem 7: a generalized shift simulates any Turing machine.
+    Hypotheses:
+    - `hSim`: step simulation for all configs (proved by `stepCommutes` for nonempty tapes)
+    - `hHead`: halted configs have valid head symbols (well-formedness invariant) -/
+def tmToGSSimulation (machine : TuringMachine.Machine)
+    (hSim : MooreStepSimulation machine)
+    (hHead : ∀ config : BiInfiniteTuringMachine.Configuration,
+      config.state = 0 → config.head < machine.numberOfSymbols) :
+    ComputationalMachine.Simulation
+      (GeneralizedShift.toComputationalMachine (fromBiTM machine))
+      (BiInfiniteTuringMachine.toComputationalMachine machine) where
+  encode := encodeBiTM machine
+  commutes := mooreCommutes machine hSim
+  halting := mooreHaltingEncoded machine hHead
 
 end TuringMachineToGeneralizedShift

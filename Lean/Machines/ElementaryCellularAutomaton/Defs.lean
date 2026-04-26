@@ -8,6 +8,8 @@
   The configuration is a periodic tape of length n (Fin n → Fin 2).
 -/
 
+import ComputationalMachine
+
 namespace ElementaryCellularAutomaton
 
 def ruleTable (ruleNumber : Nat) (a b c : Fin 2) : Fin 2 :=
@@ -29,5 +31,10 @@ def iterate (rule : Fin 2 → Fin 2 → Fin 2 → Fin 2) (n : Nat) (tape : Fin n
     Nat → (Fin n → Fin 2)
   | 0 => tape
   | k + 1 => step rule n (iterate rule n tape k)
+
+def toComputationalMachine (rule : Fin 2 → Fin 2 → Fin 2 → Fin 2) (n : Nat) :
+    ComputationalMachine where
+  Configuration := Fin n → Fin 2
+  step := fun tape => some (step rule n tape)
 
 end ElementaryCellularAutomaton

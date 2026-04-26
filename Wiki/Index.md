@@ -42,12 +42,14 @@ Interactive guided walk through the project — say **"start tour"** to begin. T
 - [Overhead](Concepts/Overhead.md) — spatial and temporal cost of simulation
 - [Pipeline Architecture](Concepts/PipelineArchitecture.md) — LLM pipeline for auto-expanding the graph (future)
 - [Lean Blueprint](Concepts/LeanBlueprint.md) — PFR-style blueprint with `\lean{}` annotations
+- [Proof Integrity](Concepts/ProofIntegrity.md) — trust model for LLM-generated Lean proofs: locked goals, no axioms, sorry tracking, native_decide policy, cross-validation
 
 ## Notebooks
 
 - [TM ↔ GS](Notebooks/TM_GS.md) — Moore 1991, TM ↔ Generalized Shift demonstration
 - [Cocke-Minsky Chain](Notebooks/CockeMinsky.md) — TM → Tag → CTS → (2,3) TM
 - [Universality Graph](Notebooks/UniversalityGraph.md) — graph exploration and visualization
+- [Cross-Validation](Notebooks/CrossValidation.md) — Lean vs. Wolfram definition validation
 
 ## Resources (papers, repos, tools)
 
