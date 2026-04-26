@@ -19,6 +19,7 @@ The generated data is organized as a **universality graph**: vertices are comput
 | TM ↔ Generalized Shift (Moore 1991) | [Wiki/Notebooks/TM_GS.md](Wiki/Notebooks/TM_GS.md) | [Wolfram Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/TM_GS.nb) |
 | Cocke–Minsky Chain (TM → Tag → CTS → (2,3) TM) | [Wiki/Notebooks/CockeMinsky.md](Wiki/Notebooks/CockeMinsky.md) | [Wolfram Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/CockeMinsky.nb) |
 | The Universality Graph | [Wiki/Notebooks/UniversalityGraph.md](Wiki/Notebooks/UniversalityGraph.md) | [Wolfram Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/UniversalityGraph.nb) |
+| Cross-Validation (Lean vs. Wolfram) | [Wiki/Notebooks/CrossValidation.md](Wiki/Notebooks/CrossValidation.md) | — |
 
 ## 📖 Wiki
 
@@ -40,6 +41,16 @@ All edges use a generic `Simulation` template (`Lean/SimulationEncoding.lean`) �
 | Theorem | Template | Hypotheses | Reference |
 |---|---|---|---|
 | Wolfram's (2,3) TM is universal | `HaltingSimulation` | `CockeMinskyStepSimulation`, `SmithSimulation` | Cocke-Minsky 1964 + Cook 2004 + Smith 2007 |
+
+## Verification
+
+How to verify that LLM-generated proofs in this repository are trustworthy:
+
+```bash
+Scripts/verify_integrity.sh    # CollectAxioms on key theorems + leanchecker kernel replay
+```
+
+The full trust model is documented in [Wiki/Concepts/ProofIntegrity.md](Wiki/Concepts/ProofIntegrity.md). In short: `Integrity.lean` uses Lean's `CollectAxioms` API to verify that every key theorem depends only on Lean's three standard axioms. `leanchecker` replays all declarations through the kernel independently. No grep or string parsing — all verification uses Lean's own tools.
 
 ## 🔨 Build Instructions
 

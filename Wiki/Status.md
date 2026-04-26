@@ -30,6 +30,10 @@ Every machine family has a `toComputationalMachine` wrapper in its `Defs.lean`, 
 
 `wolfram23HaltingSimulation`: same result wrapped as a `HaltingSimulation` instance (1 sorry bridging `ComputationalMachine.Halts` ↔ `BiInfiniteTuringMachine.Halts`).
 
+## Proof integrity
+
+Run `Scripts/verify_integrity.sh` to verify. The script uses `CollectAxioms.collect` on every key theorem to check axiom dependencies, `leanchecker` for full kernel replay, and validates that `Integrity.lean` imports match `lakefile.lean` roots. See [ProofIntegrity](Concepts/ProofIntegrity.md) for the full trust model.
+
 ## Machine families in Lean
 
 Each family has a `toComputationalMachine` wrapper and an `iterationStep_eq_exactSteps` compatibility lemma.
@@ -61,3 +65,4 @@ GS → TM general width: all building blocks fully proved (readScan, lastRead, w
 
 - [CockeMinskyChain](Proofs/CockeMinskyChain.md) — the full TM → Tag → CTS → (2,3) TM chain
 - [SimulationEncoding](Concepts/SimulationEncoding.md) — the core Lean abstraction
+- [ProofIntegrity](Concepts/ProofIntegrity.md) — trust model and verification procedures
