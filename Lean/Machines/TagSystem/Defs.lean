@@ -6,6 +6,8 @@
     Turing Machine → 2-Tag System → Cyclic Tag System → (Rule 110 / (2,3) TM)
 -/
 
+import ComputationalMachine
+
 namespace TagSystem
 
 -- ============================================================================
@@ -101,6 +103,10 @@ theorem Tag.evaluateAdd {alphabetSize : Nat} (tagSystem : Tag alphabetSize) (n m
         rw [Tag.evaluateStep tagSystem config config' (n + m) hHaltFalse hStep]
         exact hm
 
+def Tag.toComputationalMachine {alphabetSize : Nat} (tagSystem : Tag alphabetSize) : ComputationalMachine where
+  Configuration := TagConfiguration alphabetSize
+  step := tagSystem.step
+
 -- ============================================================================
 -- Cyclic Tag Systems
 -- ============================================================================
@@ -144,6 +150,31 @@ def CyclicTagSystem.exactSteps (cyclicTagSystem : CyclicTagSystem) (config : Cyc
     match cyclicTagSystem.step config with
     | none => none
     | some config' => cyclicTagSystem.exactSteps config' n
+
+def Tag.iterationStep_eq {alphabetSize : Nat} (tagSystem : Tag alphabetSize)
+    (config : TagConfiguration alphabetSize) (n : Nat) :
+    (tagSystem.toComputationalMachine).iterationStep n config =
+    match n with
+    | 0 => some config
+    | n + 1 => tagSystem.step config >>= fun c => (tagSystem.toComputationalMachine).iterationStep n c := by
+  cases n with
+  | zero => rfl
+  | succ n => rfl
+
+def CyclicTagSystem.toComputationalMachine (cts : CyclicTagSystem) : ComputationalMachine where
+  Configuration := CyclicTagSystemConfiguration
+  step := cts.step
+
+theorem CyclicTagSystem.iterationStep_eq_exactSteps (cts : CyclicTagSystem)
+    (config : CyclicTagSystemConfiguration) (n : Nat) :
+    (cts.toComputationalMachine).iterationStep n config = cts.exactSteps config n := by
+  induction n generalizing config with
+  | zero => rfl
+  | succ n ih =>
+    simp [ComputationalMachine.iterationStep, toComputationalMachine, exactSteps]
+    cases cts.step config with
+    | none => rfl
+    | some config' => exact ih config'
 
 -- ============================================================================
 -- Basic lemmas

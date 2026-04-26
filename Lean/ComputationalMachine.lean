@@ -47,4 +47,8 @@ theorem iterationStep_add (machine : ComputationalMachine) (m n : Nat) (config :
     | none => rfl
     | some config' => exact ih config'
 
+theorem Halts_of_step_none {machine : ComputationalMachine} {config : machine.Configuration}
+    (h : machine.step config = none) : machine.Halts config :=
+  ⟨1, by simp [iterationStep, h]⟩
+
 end ComputationalMachine

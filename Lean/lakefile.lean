@@ -21,5 +21,6 @@ lean_lib «UniversalityDB» where
     `Proofs.GeneralizedShiftToTuringMachine,
     `Proofs.CockeMinsky,
     `Proofs.TagSystemToCyclicTagSystem,
-    `Proofs.ElementaryCellularAutomatonMirror
+    `Proofs.ElementaryCellularAutomatonMirror,
+    `Integrity
   ]

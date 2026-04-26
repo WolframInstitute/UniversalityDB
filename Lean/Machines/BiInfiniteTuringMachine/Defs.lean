@@ -10,6 +10,7 @@
 -/
 
 import Machines.TuringMachine.Defs
+import ComputationalMachine
 
 namespace BiInfiniteTuringMachine
 
@@ -103,5 +104,19 @@ theorem wolfram23Runs10 :
 theorem wolfram23Runs20 :
     evaluate wolfram23 wolfram23Initial 20 = none := by
   native_decide
+
+def toComputationalMachine (machine : TuringMachine.Machine) : ComputationalMachine where
+  Configuration := Configuration
+  step := step machine
+
+theorem iterationStep_eq_exactSteps (machine : TuringMachine.Machine) (config : Configuration) (n : Nat) :
+    (toComputationalMachine machine).iterationStep n config = exactSteps machine config n := by
+  induction n generalizing config with
+  | zero => rfl
+  | succ n ih =>
+    simp [ComputationalMachine.iterationStep, toComputationalMachine, exactSteps]
+    cases step machine config with
+    | none => rfl
+    | some config' => exact ih config'
 
 end BiInfiniteTuringMachine
