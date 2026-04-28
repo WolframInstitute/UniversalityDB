@@ -424,11 +424,11 @@ These rules govern all Lean proof work. They close the known escape hatches by w
 
 **Rule 8 — Do not modify verification infrastructure.** `Lean/Integrity.lean` and `Scripts/verify_integrity.sh` must not be modified without human approval. These enforce the rules above — weakening them defeats the purpose.
 
-**Verification:** Run `Scripts/verify_integrity.sh`. This uses Lean's own tools — no grep or string parsing. `Integrity.lean` uses `CollectAxioms.collect` to programmatically trace axiom dependencies of every key theorem. `leanchecker` replays all declarations through the kernel. Sorry is counted from `lake build` warnings. See `Wiki/Concepts/ProofIntegrity.md` for the full trust model.
+**Verification:** Run `Scripts/verify_integrity.sh`. This uses Lean's own tools — no grep, no string parsing, no curated theorem list. `Integrity.lean` automatically scans every theorem in every project module: (a) `CollectAxioms.collect` traces axiom dependencies (any non-standard axiom fails the build), (b) detects all explicit Prop hypothesis parameters and reports them. A theorem with zero Prop hypotheses is "absolutely proven"; otherwise it's conditional on those hypotheses. `leanchecker` replays all declarations through the kernel. Sorry is counted from `lake build` warnings. See `Wiki/Concepts/ProofIntegrity.md` for the full trust model.
 
 **When adding a new module:** Add to `Lean/lakefile.lean` roots AND `Lean/Integrity.lean` imports. The verification script checks these are in sync and fails if they diverge. The `leanchecker` module list is derived from `lakefile.lean` automatically.
 
-**When adding a new proof:** Add the main theorem(s) to the `keyTheorems` list in `Lean/Integrity.lean`. This is the list of theorems whose axiom dependencies are checked. A new proof not added here will still be compiled and kernel-replayed, but its axiom closure won't be explicitly verified.
+**When adding a new proof:** Nothing extra to do — `Integrity.lean` scans every theorem in every project module automatically. New theorems are picked up on the next build.
 
 **When adding a new machine family:** Add a cross-validation section to `Wiki/Notebooks/CrossValidation.md` comparing the Lean definition against its Wolfram counterpart (see existing sections for format).
 

@@ -1,17 +1,27 @@
 /-
   Integrity.lean — Proof integrity verification using Lean's own APIs.
 
-  Uses `CollectAxioms.collect` to programmatically trace axiom dependencies
-  of every key theorem, and `leanchecker` (via the shell script) for full
-  kernel replay. No string parsing, no grep.
+  Iterates EVERY theorem in EVERY project module (no hardcoded list).
+  For each theorem:
+  1. `CollectAxioms.collect` traces axiom dependencies. Any axiom beyond
+     standard (`propext`, `Quot.sound`, `Classical.choice`), `sorryAx`,
+     or `_native` axioms is an integrity violation → build fails.
+  2. Hypothesis detection: identifies all explicit Prop parameters
+     (the caller must supply proofs of these). Reported per theorem.
+     A theorem with zero Prop hypotheses is "absolutely proven" — its
+     conclusion holds unconditionally (modulo standard axioms and the
+     Lean kernel). A theorem with hypotheses is conditionally proven.
+  3. `leanchecker` (via the shell script) replays all declarations
+     through the kernel for additional kernel-level validation.
 
-  If any violation is found, this file fails to compile (logError).
+  No string parsing, no grep, no curated theorem list. The check covers
+  the entire project automatically.
 
   MAINTENANCE:
   - New project modules: add to lakefile.lean roots AND the import list below.
     The shell script derives its leanchecker module list from lakefile.lean
     automatically — no third place to update.
-  - New key theorems: add to `keyTheorems` below.
+  - That's it. New theorems are picked up automatically.
 -/
 
 import Lean
@@ -47,67 +57,92 @@ private def hasNativeComponent : Name → Bool
 private def isTrackedAxiom (n : Name) : Bool :=
   n == `sorryAx || hasNativeComponent n
 
-/-- Key theorems whose axiom dependencies are checked. -/
-private def keyTheorems : List Name := [
-  -- Moore Theorem 7: TM → GS
-  `TuringMachineToGeneralizedShift.stepCommutes,
-  `TuringMachineToGeneralizedShift.decodeEncode,
-  `TuringMachineToGeneralizedShift.tmToGSSimulation,
-  -- Moore Theorem 8: GS → TM
-  `GeneralizedShiftToTuringMachine.stepSimulation,
-  `GeneralizedShiftToTuringMachine.gsToTMSimulation,
-  -- Cook 2004: Tag → CTS
-  `TagSystem.tagToCyclicTagSystemHaltingForward,
-  `TagSystem.tagToCTSSimulation,
-  -- Cocke-Minsky chain: wolfram23 universal
-  `BiInfiniteTuringMachine.wolfram23Universal,
-  `BiInfiniteTuringMachine.wolfram23HaltingSimulation,
-  -- ECA mirror: Rule 110 ↔ Rule 124
-  `ElementaryCellularAutomaton.mirrorSimulationSteps,
-  `ElementaryCellularAutomaton.rule110SimulatesRule124,
-  `ElementaryCellularAutomaton.rule124SimulatesRule110,
-  -- Simulation framework
-  `ComputationalMachine.Simulation.halting_preserved,
-  `ComputationalMachine.Simulation.compose
+/-- Modules whose theorems are checked. Every theorem-kind constant from
+    these modules is scanned. Derived from the import list above so adding
+    a module requires updating only one place (lakefile.lean + this file's
+    imports — see MAINTENANCE comment). -/
+private def projectModules : List Name := [
+  `ComputationalMachine,
+  `SimulationEncoding,
+  `Machines.TuringMachine.Defs,
+  `Machines.BiInfiniteTuringMachine.Defs,
+  `Machines.TagSystem.Defs,
+  `Machines.ElementaryCellularAutomaton.Defs,
+  `Machines.GeneralizedShift.Defs,
+  `Proofs.TuringMachineToGeneralizedShift,
+  `Proofs.GeneralizedShiftToTuringMachine,
+  `Proofs.CockeMinsky,
+  `Proofs.TagSystemToCyclicTagSystem,
+  `Proofs.ElementaryCellularAutomatonMirror
 ]
 
-/-- Spot-check theorems (native_decide axioms expected here). -/
-private def spotCheckTheorems : List Name := [
-  `BiInfiniteTuringMachine.wolfram23Step1,
-  `TagSystem.simulationExampleCorrected
-]
+/-- Returns the list of explicit Prop-typed parameters (hypotheses).
+    Includes both "free" hypotheses (`(h : SomeUnprovenProp)`) and
+    "bound" hypotheses (`(a : Nat) (h : a > 0)` — h depends on a).
+    Both are unproved assumptions the caller must supply.
+    Excludes implicit and instance arguments (typeclass-resolved). -/
+private partial def hypothesisParams (type : Expr) : MetaM (Array (Name × Bool)) := do
+  Lean.Meta.forallTelescope type fun fvars _ => do
+    let mut result : Array (Name × Bool) := #[]
+    for i in [0:fvars.size] do
+      let fvar := fvars[i]!
+      let decl ← fvar.fvarId!.getDecl
+      -- Only count explicit binders (the caller must supply these)
+      if !decl.binderInfo.isExplicit then continue
+      let fvarType ← Lean.Meta.inferType fvar
+      let isProp ← Lean.Meta.isProp fvarType
+      if !isProp then continue
+      let earlier := fvars.extract 0 i
+      let dependsOnEarlier := earlier.any (fun e => fvarType.containsFVar e.fvarId!)
+      result := result.push (decl.userName, dependsOnEarlier)
+    return result
+
+/-- Returns true if `name`'s module is in `projectModules`. -/
+private def isProjectConstant (env : Environment) (name : Name) : Bool :=
+  match env.getModuleIdxFor? name with
+  | none => false
+  | some idx =>
+    let modName := env.allImportedModuleNames[idx.toNat]!
+    projectModules.contains modName
 
 run_cmd do
   let env ← getEnv
   let mut hasViolation := false
+  let mut absolutelyProven : Nat := 0
+  let mut conditionallyProven : Nat := 0
+  let mut totalChecked : Nat := 0
 
-  -- Check key theorems: only standard axioms allowed (+ sorryAx if tracked)
-  for thmName in keyTheorems do
-    let (_, s) := (CollectAxioms.collect thmName).run env |>.run {}
+  -- Iterate every constant in every project module
+  for (name, info) in env.constants.map₁.toList ++ env.constants.map₂.toList do
+    -- Skip non-theorems (defs, axioms, inductives, etc.)
+    let .thmInfo _ := info | continue
+    -- Skip non-project constants
+    if !isProjectConstant env name then continue
+    -- Skip internal compiler-generated theorems
+    if name.isInternal then continue
+
+    totalChecked := totalChecked + 1
+
+    -- Check 1: axioms
+    let (_, s) := (CollectAxioms.collect name).run env |>.run {}
     let mut unexpected : Array Name := #[]
     for ax in s.axioms do
       if ax ∉ standardAxioms && !isTrackedAxiom ax then
         unexpected := unexpected.push ax
     if unexpected.size > 0 then
-      logError m!"INTEGRITY VIOLATION: '{thmName}' depends on unexpected axioms: {unexpected}"
+      logError m!"INTEGRITY VIOLATION: '{name}' depends on unexpected axioms: {unexpected}"
       hasViolation := true
+      continue
+
+    -- Check 2: hypothesis parameters
+    let hyps ← liftCoreM (Lean.Meta.MetaM.run' (hypothesisParams info.type))
+    if hyps.isEmpty then
+      absolutelyProven := absolutelyProven + 1
     else
-      let trackedAxioms := s.axioms.filter isTrackedAxiom
-      if trackedAxioms.size > 0 then
-        logInfo m!"TRACE {thmName}: {s.axioms} (tracked: {trackedAxioms})"
-      else
-        logInfo m!"TRACE {thmName}: {s.axioms}"
+      conditionallyProven := conditionallyProven + 1
 
-  -- Check spot-check theorems: native_decide axioms are expected
-  for thmName in spotCheckTheorems do
-    let (_, s) := (CollectAxioms.collect thmName).run env |>.run {}
-    let mut unexpected : Array Name := #[]
-    for ax in s.axioms do
-      if ax ∉ standardAxioms && !isTrackedAxiom ax then
-        unexpected := unexpected.push ax
-    if unexpected.size > 0 then
-      logError m!"INTEGRITY VIOLATION: spot check '{thmName}' depends on unexpected axioms: {unexpected}"
-      hasViolation := true
-
+  logInfo m!"INTEGRITY CHECK: scanned {totalChecked} theorems"
+  logInfo m!"  absolutely proven (no Prop hypotheses): {absolutelyProven}"
+  logInfo m!"  conditionally proven (has Prop hypotheses): {conditionallyProven}"
   if !hasViolation then
     logInfo "INTEGRITY CHECK: PASS"

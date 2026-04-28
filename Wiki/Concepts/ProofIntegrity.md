@@ -13,6 +13,7 @@ An LLM generating Lean proofs can produce results that type-check but are meanin
 5. **unsafe keyword.** `unsafe def` bypasses the type checker entirely.
 6. **@[implemented_by] and @[extern] attributes.** Both replace a function's compiled implementation — `@[implemented_by]` with Lean code, `@[extern]` with C code via FFI. An LLM could write a correct-looking `def encode` but attach `@[implemented_by cheatImpl]` so that `native_decide` sees a different function than what appears in the source.
 7. **Kernel-weakening options.** Certain `set_option` calls can change what the Lean kernel accepts.
+8. **Free hypotheses.** A theorem with type `(h : SomeUnprovenProp) → Conclusion` is *conditionally* proved — not closed. The proof term needs `h` supplied by the caller. If `SomeUnprovenProp` is itself unproved, the conclusion only holds modulo that assumption. A theorem can satisfy 1-7 above (no axioms, no sorry, etc.) and still not actually prove its claimed conclusion in any unconditional sense.
 
 ## The solution
 
@@ -133,13 +134,20 @@ Run `Scripts/verify_integrity.sh`. It uses Lean's own tools — no grep or strin
 
 **Step 1 — Build** (`lake build`):
 
-`Integrity.lean` imports all project modules and uses `CollectAxioms.collect` (Lean's API for tracing axiom dependencies) on every key theorem. For each theorem, it checks that the only axioms in its transitive closure are:
+`Integrity.lean` imports all project modules and automatically scans every theorem-kind constant in those modules. No curated list — every theorem is checked. For each theorem:
 
-- `propext`, `Quot.sound`, `Classical.choice` — Lean's three standard axioms
-- `sorryAx` — sorry used (tracked in `Wiki/Status.md`, not a failure)
-- `*._native.*` — native_decide computational axioms (acceptable for spot checks)
+1. **Axiom check**: `CollectAxioms.collect` (Lean's API for tracing axiom dependencies) returns the transitive closure of axioms used. The only axioms permitted are:
+   - `propext`, `Quot.sound`, `Classical.choice` — Lean's three standard axioms
+   - `sorryAx` — sorry used (tracked, not a failure for now)
+   - `*._native.*` — native_decide computational axioms
 
-Any other axiom triggers `logError`, which makes the build fail. This operates on Lean's parsed AST via the `Environment` API — no source text parsing, no comment ambiguity.
+   Any other axiom triggers `logError`, which makes the build fail.
+
+2. **Hypothesis check**: identifies all explicit Prop-typed parameters in the theorem's type signature (using `Lean.Meta.forallTelescope` and `Lean.Meta.isProp`). These are propositions the caller must supply proofs of — they are unproved assumptions.
+
+The build output reports for the entire project: how many theorems are *absolutely proven* (zero Prop hypotheses — the conclusion holds unconditionally) versus *conditionally proven* (has Prop hypotheses — the conclusion holds modulo those hypotheses).
+
+This operates on Lean's parsed AST via the `Environment` API — no source text parsing, no comment ambiguity, no curated list to maintain.
 
 `lake build` also reports every `sorry` and `admit` as a compiler warning with exact file and line.
 
@@ -170,7 +178,7 @@ These only threaten proof correctness when `native_decide` is used — and when 
 When `Scripts/verify_integrity.sh` fails, the output tells you which check failed. Here's what each failure means and how to resolve it.
 
 **`INTEGRITY VIOLATION: '...' depends on unexpected axioms: [...]`**
-`CollectAxioms.collect` found an axiom in a key theorem's dependency closure that isn't `propext`, `Quot.sound`, `Classical.choice`, `sorryAx`, or a `_native` axiom. This means a custom axiom is being used transitively. The output shows which axiom and which theorem. Find and remove the axiom declaration, or convert it to a hypothesis parameter in the theorem type signature.
+`CollectAxioms.collect` found an axiom in a theorem's dependency closure that isn't `propext`, `Quot.sound`, `Classical.choice`, `sorryAx`, or a `_native` axiom. This means a custom axiom is being used transitively. The output shows which axiom and which theorem. Find and remove the axiom declaration, or convert it to a hypothesis parameter in the theorem type signature.
 
 **`INTEGRITY CHECK: PASS` not found / `FAIL: Integrity.lean output not found`**
 `Integrity.lean` didn't compile or wasn't included in the build. Check in order: (1) `Integrity` is listed in `Lean/lakefile.lean` roots, (2) `Lean/Integrity.lean` is unmodified (Rule 8), (3) stale build cache — run `cd Lean && lake clean` then re-run the script.
