@@ -76,25 +76,22 @@ private def projectModules : List Name := [
   `Proofs.ElementaryCellularAutomatonMirror
 ]
 
-/-- Returns the list of explicit Prop-typed parameters (hypotheses).
-    Includes both "free" hypotheses (`(h : SomeUnprovenProp)`) and
-    "bound" hypotheses (`(a : Nat) (h : a > 0)` — h depends on a).
-    Both are unproved assumptions the caller must supply.
-    Excludes implicit and instance arguments (typeclass-resolved). -/
-private partial def hypothesisParams (type : Expr) : MetaM (Array (Name × Bool)) := do
+/-- Returns all Prop-typed parameters (hypotheses) in a theorem's type.
+    Covers explicit `(h : P)`, implicit `{h : P}`, and strict-implicit `⦃h : P⦄`
+    binders — all are unproved assumptions the caller (or elaborator) must
+    supply. Excludes instance arguments `[h : P]` since those are typeclass
+    instances, structurally inferred from types, not arbitrary hypotheses. -/
+private partial def hypothesisParams (type : Expr) : MetaM (Array Name) := do
   Lean.Meta.forallTelescope type fun fvars _ => do
-    let mut result : Array (Name × Bool) := #[]
-    for i in [0:fvars.size] do
-      let fvar := fvars[i]!
+    let mut result : Array Name := #[]
+    for fvar in fvars do
       let decl ← fvar.fvarId!.getDecl
-      -- Only count explicit binders (the caller must supply these)
-      if !decl.binderInfo.isExplicit then continue
+      -- Skip instance binders (typeclass resolution, not free hypotheses)
+      if decl.binderInfo == .instImplicit then continue
       let fvarType ← Lean.Meta.inferType fvar
       let isProp ← Lean.Meta.isProp fvarType
       if !isProp then continue
-      let earlier := fvars.extract 0 i
-      let dependsOnEarlier := earlier.any (fun e => fvarType.containsFVar e.fvarId!)
-      result := result.push (decl.userName, dependsOnEarlier)
+      result := result.push decl.userName
     return result
 
 /-- Returns true if `name`'s module is in `projectModules`. -/
