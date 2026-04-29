@@ -17,6 +17,21 @@
 
 set -euo pipefail
 
+VERBOSE=0
+for arg in "$@"; do
+    case "$arg" in
+        -v|--verbose) VERBOSE=1 ;;
+        -h|--help)
+            cat <<EOF
+Usage: verify_integrity.sh [-v|--verbose]
+  -v, --verbose   List each theorem's classification (absolute vs conditional)
+                  rather than just aggregate counts.
+EOF
+            exit 0
+            ;;
+    esac
+done
+
 cd "$(dirname "$0")/.."
 
 FAIL=0
@@ -64,7 +79,14 @@ echo ""
 echo "=== Building project (Lean-native integrity checks) ==="
 BUILD_LOG=$(mktemp)
 set +e
-(cd Lean && lake build 2>&1) | tee "$BUILD_LOG"
+if [ "$VERBOSE" -eq 1 ]; then
+    (cd Lean && lake build 2>&1) | tee "$BUILD_LOG"
+else
+    # Suppress per-theorem ABSOLUTE/CONDITIONAL detail lines unless --verbose;
+    # show everything else (warnings, errors, build progress, summary counts).
+    (cd Lean && lake build 2>&1) | tee "$BUILD_LOG" \
+        | grep -v 'info:.*Integrity\.lean.*ABSOLUTE \|info:.*Integrity\.lean.*CONDITIONAL '
+fi
 BUILD_EXIT=${PIPESTATUS[0]}
 set -e
 

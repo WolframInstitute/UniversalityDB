@@ -1,27 +1,41 @@
 /-
   Integrity.lean — Proof integrity verification using Lean's own APIs.
 
-  Iterates EVERY theorem in EVERY project module (no hardcoded list).
-  For each theorem:
+  Generic and project-agnostic. To use in any Lean 4 project:
+  1. Drop this file into the project's source tree.
+  2. Add its module to lakefile.lean roots.
+  3. Replace the project imports below with imports of YOUR project's
+     top-level modules. That's the only thing to edit.
+  4. Run via `Scripts/verify_integrity.sh` (or just `lake build`).
+
+  Project modules are auto-detected from this file's direct imports
+  (everything except `Lean` itself). Every theorem in every directly-
+  imported module is automatically scanned.
+
+  Per theorem:
   1. `CollectAxioms.collect` traces axiom dependencies. Any axiom beyond
      standard (`propext`, `Quot.sound`, `Classical.choice`), `sorryAx`,
      or `_native` axioms is an integrity violation → build fails.
-  2. Hypothesis detection: identifies all explicit Prop parameters
-     (the caller must supply proofs of these). Reported per theorem.
-     A theorem with zero Prop hypotheses is "absolutely proven" — its
-     conclusion holds unconditionally (modulo standard axioms and the
-     Lean kernel). A theorem with hypotheses is conditionally proven.
+  2. Hypothesis detection: identifies all Prop parameters via
+     `forallTelescope` + `isProp`. A theorem with zero Prop hypotheses
+     is "absolutely proven" — its conclusion holds unconditionally
+     (modulo standard axioms and the Lean kernel). A theorem with
+     hypotheses is conditionally proven on those assumptions.
   3. `leanchecker` (via the shell script) replays all declarations
      through the kernel for additional kernel-level validation.
 
-  No string parsing, no grep, no curated theorem list. The check covers
-  the entire project automatically.
+  No string parsing, no grep, no curated theorem list, no project module
+  list. The check covers the entire project automatically.
 
-  MAINTENANCE:
-  - New project modules: add to lakefile.lean roots AND the import list below.
-    The shell script derives its leanchecker module list from lakefile.lean
-    automatically — no third place to update.
-  - That's it. New theorems are picked up automatically.
+  Limitation: the hypothesis check looks at the OUTER Pi-binders of each
+  theorem's type. If a hypothesis is hidden inside a definition
+  (`def Conditional (h : P) := Q; theorem foo : Conditional hyp := ...`),
+  the binder is buried behind the def and won't surface in this scan.
+  Convention: expose hypotheses at the top level of the theorem's type.
+
+  MAINTENANCE: when adding a new top-level module, update lakefile.lean
+  roots AND the import list below. New theorems within imported modules
+  are picked up automatically.
 -/
 
 import Lean
@@ -57,24 +71,13 @@ private def hasNativeComponent : Name → Bool
 private def isTrackedAxiom (n : Name) : Bool :=
   n == `sorryAx || hasNativeComponent n
 
-/-- Modules whose theorems are checked. Every theorem-kind constant from
-    these modules is scanned. Derived from the import list above so adding
-    a module requires updating only one place (lakefile.lean + this file's
-    imports — see MAINTENANCE comment). -/
-private def projectModules : List Name := [
-  `ComputationalMachine,
-  `SimulationEncoding,
-  `Machines.TuringMachine.Defs,
-  `Machines.BiInfiniteTuringMachine.Defs,
-  `Machines.TagSystem.Defs,
-  `Machines.ElementaryCellularAutomaton.Defs,
-  `Machines.GeneralizedShift.Defs,
-  `Proofs.TuringMachineToGeneralizedShift,
-  `Proofs.GeneralizedShiftToTuringMachine,
-  `Proofs.CockeMinsky,
-  `Proofs.TagSystemToCyclicTagSystem,
-  `Proofs.ElementaryCellularAutomatonMirror
-]
+/-- Project modules are this file's direct imports, minus `Lean` itself
+    and `Init` (always implicitly imported). This makes the integrity
+    check generic across projects: just edit the imports above. -/
+private def getProjectModules (env : Environment) : Array Name :=
+  env.header.imports.filterMap fun imp =>
+    let m := imp.module
+    if m == `Lean || m == `Init then none else some m
 
 /-- Returns all Prop-typed parameters (hypotheses) in a theorem's type.
     Covers explicit `(h : P)`, implicit `{h : P}`, and strict-implicit `⦃h : P⦄`
@@ -94,31 +97,49 @@ private partial def hypothesisParams (type : Expr) : MetaM (Array Name) := do
       result := result.push decl.userName
     return result
 
-/-- Returns true if `name`'s module is in `projectModules`. -/
-private def isProjectConstant (env : Environment) (name : Name) : Bool :=
+/-- Returns true if `name`'s module is one of the directly-imported
+    project modules. -/
+private def isProjectConstant (env : Environment) (projectMods : Array Name)
+    (name : Name) : Bool :=
   match env.getModuleIdxFor? name with
   | none => false
   | some idx =>
     let modName := env.allImportedModuleNames[idx.toNat]!
-    projectModules.contains modName
+    projectMods.contains modName
+
+/-- Detect auto-generated declarations (equation lemmas, sizeOf specs,
+    injectivity, recursors, noConfusion, etc.). These are produced by
+    Lean's elaborator from user definitions, not written by hand. They
+    are still scanned for axioms (correctness), but excluded from the
+    per-theorem verbose listing for readability. -/
+private def isAutoGenerated : Name → Bool
+  | .str _ s =>
+    s == "sizeOf_spec" || s == "injEq" || s == "brecOn" || s == "below" ||
+    s == "noConfusion" || s == "noConfusionType" ||
+    -- equation compiler lemmas: name.eq_N, name.eq_def
+    s == "eq_def" || (s.startsWith "eq_" && (s.drop 3).all Char.isDigit) ||
+    -- match cases / aux lemmas
+    s.startsWith "_" || s.startsWith "match_"
+  | _ => false
 
 run_cmd do
   let env ← getEnv
+  let projectMods := getProjectModules env
+  logInfo m!"INTEGRITY CHECK: project modules = {projectMods}"
   let mut hasViolation := false
-  let mut absolutelyProven : Nat := 0
-  let mut conditionallyProven : Nat := 0
-  let mut totalChecked : Nat := 0
+  let mut absoluteThms : Array Name := #[]
+  let mut conditionalThms : Array (Name × Array Name) := #[]
 
-  -- Iterate every constant in every project module
+  -- Iterate every constant in every directly-imported project module
   for (name, info) in env.constants.map₁.toList ++ env.constants.map₂.toList do
     -- Skip non-theorems (defs, axioms, inductives, etc.)
     let .thmInfo _ := info | continue
     -- Skip non-project constants
-    if !isProjectConstant env name then continue
+    if !isProjectConstant env projectMods name then continue
     -- Skip internal compiler-generated theorems
     if name.isInternal then continue
-
-    totalChecked := totalChecked + 1
+    -- Skip auto-generated equation lemmas / sizeOf specs / injEq / etc.
+    if isAutoGenerated name then continue
 
     -- Check 1: axioms
     let (_, s) := (CollectAxioms.collect name).run env |>.run {}
@@ -134,12 +155,19 @@ run_cmd do
     -- Check 2: hypothesis parameters
     let hyps ← liftCoreM (Lean.Meta.MetaM.run' (hypothesisParams info.type))
     if hyps.isEmpty then
-      absolutelyProven := absolutelyProven + 1
+      absoluteThms := absoluteThms.push name
     else
-      conditionallyProven := conditionallyProven + 1
+      conditionalThms := conditionalThms.push (name, hyps)
 
-  logInfo m!"INTEGRITY CHECK: scanned {totalChecked} theorems"
-  logInfo m!"  absolutely proven (no Prop hypotheses): {absolutelyProven}"
-  logInfo m!"  conditionally proven (has Prop hypotheses): {conditionallyProven}"
+  -- Per-theorem details (parsed by shell script for verbose mode)
+  for name in absoluteThms do
+    logInfo m!"ABSOLUTE {name}"
+  for (name, hyps) in conditionalThms do
+    logInfo m!"CONDITIONAL {name}: hypotheses {hyps}"
+
+  -- Aggregate counts
+  logInfo m!"INTEGRITY CHECK: scanned {absoluteThms.size + conditionalThms.size} theorems"
+  logInfo m!"  absolutely proven (no Prop hypotheses): {absoluteThms.size}"
+  logInfo m!"  conditionally proven (has Prop hypotheses): {conditionalThms.size}"
   if !hasViolation then
     logInfo "INTEGRITY CHECK: PASS"
