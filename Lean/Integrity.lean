@@ -27,11 +27,10 @@
   No string parsing, no grep, no curated theorem list, no project module
   list. The check covers the entire project automatically.
 
-  Limitation: the hypothesis check looks at the OUTER Pi-binders of each
-  theorem's type. If a hypothesis is hidden inside a definition
-  (`def Conditional (h : P) := Q; theorem foo : Conditional hyp := ...`),
-  the binder is buried behind the def and won't surface in this scan.
-  Convention: expose hypotheses at the top level of the theorem's type.
+  Hypotheses hidden inside `def` bodies are also detected: the scan uses
+  `forallTelescopeReducing`, which unfolds reducible definitions before
+  inspecting Pi-binders. So `def Conditional := P → Q; theorem foo :
+  Conditional := ...` correctly surfaces the hidden Pi-binder.
 
   MAINTENANCE: when adding a new top-level module, update lakefile.lean
   roots AND the import list below. New theorems within imported modules
@@ -83,9 +82,13 @@ private def getProjectModules (env : Environment) : Array Name :=
     Covers explicit `(h : P)`, implicit `{h : P}`, and strict-implicit `⦃h : P⦄`
     binders — all are unproved assumptions the caller (or elaborator) must
     supply. Excludes instance arguments `[h : P]` since those are typeclass
-    instances, structurally inferred from types, not arbitrary hypotheses. -/
+    instances, structurally inferred from types, not arbitrary hypotheses.
+
+    Uses `forallTelescopeReducing` so that hypotheses hidden inside `def`
+    bodies (e.g. `theorem foo : Conditional` where `Conditional` unfolds to
+    `(h : P) → Q`) are reduced and the Pi-binder is exposed. -/
 private partial def hypothesisParams (type : Expr) : MetaM (Array Name) := do
-  Lean.Meta.forallTelescope type fun fvars _ => do
+  Lean.Meta.forallTelescopeReducing type fun fvars _ => do
     let mut result : Array Name := #[]
     for fvar in fvars do
       let decl ← fvar.fvarId!.getDecl
