@@ -22,7 +22,7 @@ lean_lib «UniversalityDB» where
     `Proofs.CockeMinsky,
     `Proofs.TagSystemToCyclicTagSystem,
     `Proofs.ElementaryCellularAutomatonMirror,
-    `Proofs.TMtoGS_ViaDecode,
+    `Proofs.TMtoGS,
     `Edges,
     `EdgeAudit,
     `Integrity

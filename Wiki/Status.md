@@ -33,7 +33,7 @@ deferred — paper-and-pencil-clear, tedious case analysis (cells × right tape
 
 | Edge | File | Template | Overhead | Sorry in proof |
 |---|---|---|---|---|
-| TM → GS (Moore Thm 7, decode-based) | `Lean/Proofs/TMtoGS_ViaDecode.lean` | `SimulationViaDecode` | σ=1, τ=1 | 0 (4 well-formedness hypotheses) |
+| TM → GS (Moore Thm 7) | `Lean/Proofs/TMtoGS.lean` | `SimulationViaDecode` | σ=1, τ=1 | 0 (4 well-formedness hypotheses) |
 | GS → TM (Moore Thm 8) | `Lean/Proofs/GeneralizedShiftToTuringMachine.lean` | `Simulation` | σ=1, τ≤2(w-1)+m | 2 (`fullSim_general` for w≥2; `gsToTMSimulation` reconstructed at wrapper) |
 | Tag → CyclicTag (Cook 2004) | `Lean/Proofs/TagSystemToCyclicTagSystem.lean` | `Simulation` | 1 tag step = 2k CTS steps | 1 (halting for single-element tag words) |
 | ECA Rule 110 ↔ Rule 124 | `Lean/Proofs/ElementaryCellularAutomatonMirror.lean` | `Simulation` | σ=1, τ=1 | 0 |
@@ -63,7 +63,7 @@ Run `Scripts/verify_integrity.sh` to verify. The script uses `CollectAxioms.coll
 |---|---|---|---|
 | `edge_ECA110_ECA124` | unconditional | (none) | propext, Quot.sound |
 | `edge_ECA124_ECA110` | unconditional | (none) | propext, Quot.sound |
-| `edge_TMtoGS_viaDecode` | conditional (4 well-formedness assumptions) | hk, hHeadAll, hWriteBound, hStateBound — **commutes and halting fully proved** | propext, Quot.sound, Classical.choice |
+| `edge_TMtoGS` | conditional (4 well-formedness assumptions) | hk, hHeadAll, hWriteBound, hStateBound — **commutes and halting fully proved** | propext, Quot.sound, Classical.choice |
 | `edge_GStoTM` | conditional | `hSim`, `hLen`, `hShift`, `hHalt` | propext |
 | `edge_TagtoCTS` | conditional | `hHalt` (single-element tag word case) | propext, Quot.sound, Classical.choice |
 | `edge_CockeMinskyChain` | conditional | `h_cm`, `h_smith` | propext, Quot.sound, Classical.choice |

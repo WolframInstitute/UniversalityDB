@@ -23,6 +23,7 @@ import Machines.TagSystem.Defs
 import Machines.ElementaryCellularAutomaton.Defs
 import Machines.GeneralizedShift.Defs
 import Proofs.TuringMachineToGeneralizedShift
+import Proofs.TMtoGS
 import Proofs.GeneralizedShiftToTuringMachine
 import Proofs.CockeMinsky
 import Proofs.TagSystemToCyclicTagSystem
@@ -49,10 +50,10 @@ private def isTrackedAxiom (n : Name) : Bool :=
 
 /-- Key theorems whose axiom dependencies are checked. -/
 private def keyTheorems : List Name := [
-  -- Moore Theorem 7: TM → GS
+  -- Moore Theorem 7: TM → GS (building blocks + assembled simulation)
   `TuringMachineToGeneralizedShift.stepCommutes,
   `TuringMachineToGeneralizedShift.decodeEncode,
-  `TuringMachineToGeneralizedShift.tmToGSSimulation,
+  `TMtoGS.tmToGSSimulation,
   -- Moore Theorem 8: GS → TM
   `GeneralizedShiftToTuringMachine.stepSimulation,
   `GeneralizedShiftToTuringMachine.gsToTMSimulation,
