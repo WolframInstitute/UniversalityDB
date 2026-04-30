@@ -19,6 +19,16 @@ representation so the encode of a BiTM config lands in the image-preserving
 subset of GS configs — usable for a future unification of all simulations
 under a single decode-based template.
 
+`BiInfiniteTuringMachine.step_stripConfig_bisim` proves the bisimulation
+`(step c).map stripConfig = stepNormalized (stripConfig c)` — i.e., the
+standard `step` is well-defined modulo trailing-zero canonicalization. The
+analogous lemma for `GeneralizedShift.step` is structurally similar
+(induction over `shiftBy` with single-step bisimulations on
+`shiftRightOne`/`shiftLeftOne`); `stripConfig_idempotent` is proved and the
+chain is documented in-file. Lean formalization of the GS shift bisim is
+deferred — paper-and-pencil-clear, tedious case analysis (cells × right tape
+× left tape branches).
+
 ## Proved edges
 
 | Edge | File | Template | Overhead | Sorry in proof |
