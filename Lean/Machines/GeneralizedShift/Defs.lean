@@ -191,4 +191,21 @@ theorem iterationStep_normalized_eq_exactSteps (machine : Machine) (config : Con
     | none => rfl
     | some config' => exact ih config'
 
+-- ============================================================================
+-- Bisimulation: GS `step` and `stepNormalized` agree modulo `stripConfig`.
+--
+-- The analogous lemma for the bi-infinite Turing machine is fully proved in
+-- `BiInfiniteTuringMachine.step_stripConfig_bisim`. The GS version follows
+-- the same pattern, lifted through `shiftRightOne` / `shiftLeftOne` /
+-- `shiftBy` (each of which is well-defined modulo `stripConfig`). Worked out
+-- on paper; Lean formalization is mechanical case analysis on cells × right
+-- (and the symmetric for left). Deferred — see Wiki/Status.md.
+-- ============================================================================
+
+/-- `stripConfig` is idempotent on configurations. -/
+theorem stripConfig_idempotent (c : Configuration) :
+    stripConfig (stripConfig c) = stripConfig c := by
+  unfold stripConfig
+  simp [stripTrailingZeros_idempotent]
+
 end GeneralizedShift

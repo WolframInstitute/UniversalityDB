@@ -164,4 +164,111 @@ theorem iterationStep_normalized_eq_exactSteps (machine : TuringMachine.Machine)
     | none => rfl
     | some config' => exact ih config'
 
+-- ============================================================================
+-- Auxiliary list lemmas for `stripTrailingZeros`
+-- ============================================================================
+
+@[simp] theorem stripTrailingZeros_nil :
+    stripTrailingZeros ([] : List Nat) = [] := rfl
+
+/-- The head (default 0) is invariant under stripping. -/
+theorem stripTrailingZeros_headD (xs : List Nat) :
+    (stripTrailingZeros xs).headD 0 = xs.headD 0 := by
+  cases xs with
+  | nil => rfl
+  | cons x xs' =>
+    simp only [List.headD, stripTrailingZeros]
+    by_cases h : ((stripTrailingZeros xs').isEmpty && (x == 0)) = true
+    · simp only [h, ite_true]
+      simp at h; exact h.2.symm
+    · rw [if_neg h]
+
+/-- Strip commutes with `tail`. -/
+theorem stripTrailingZeros_tail (xs : List Nat) :
+    stripTrailingZeros xs.tail = (stripTrailingZeros xs).tail := by
+  cases xs with
+  | nil => rfl
+  | cons x xs' =>
+    simp only [List.tail_cons, stripTrailingZeros]
+    by_cases h : ((stripTrailingZeros xs').isEmpty && (x == 0)) = true
+    · rw [if_pos h]; simp
+      exact List.isEmpty_iff.mp (Bool.and_eq_true_iff.mp h).1
+    · rw [if_neg h]; simp
+
+/-- If two lists have equal strips, prepending the same element preserves
+    equal strips. -/
+theorem stripTrailingZeros_cons_congr (x : Nat) (xs ys : List Nat)
+    (h : stripTrailingZeros xs = stripTrailingZeros ys) :
+    stripTrailingZeros (x :: xs) = stripTrailingZeros (x :: ys) := by
+  simp only [stripTrailingZeros]
+  rw [show (stripTrailingZeros xs).isEmpty = (stripTrailingZeros ys).isEmpty from by rw [h]]
+  rw [show stripTrailingZeros xs = stripTrailingZeros ys from h]
+
+/-- Strip is idempotent. Follows from `_cons_congr` and `headD`/`tail` lemmas. -/
+theorem stripTrailingZeros_idempotent (xs : List Nat) :
+    stripTrailingZeros (stripTrailingZeros xs) = stripTrailingZeros xs := by
+  induction xs with
+  | nil => rfl
+  | cons x xs' ih =>
+    simp only [stripTrailingZeros]
+    by_cases h : ((stripTrailingZeros xs').isEmpty && (x == 0)) = true
+    · rw [if_pos h]; rfl
+    · rw [if_neg h]
+      simp only [stripTrailingZeros, ih]
+      rw [if_neg h]
+
+/-- Cons-strip distribute: stripping `a :: stripTrailingZeros xs` is the
+    same as stripping `a :: xs`. -/
+theorem stripTrailingZeros_cons_strip (a : Nat) (xs : List Nat) :
+    stripTrailingZeros (a :: stripTrailingZeros xs) = stripTrailingZeros (a :: xs) :=
+  (stripTrailingZeros_cons_congr a (stripTrailingZeros xs) xs (stripTrailingZeros_idempotent xs))
+
+-- ============================================================================
+-- Bisimulation: `step` and `stepNormalized` agree modulo `stripConfig`.
+-- ============================================================================
+
+/-- `readHead` is just `(headD 0, tail)`. -/
+theorem readHead_eq (xs : List Nat) : readHead xs = (xs.headD 0, xs.tail) := by
+  cases xs <;> rfl
+
+/-- The bisimulation lemma: stripping the input first does not change the
+    canonical (post-stripped) output. Concretely:
+
+      `(step machine c).map stripConfig = stepNormalized machine (stripConfig c)`
+
+    This is the "step is well-defined modulo trailing-zero canonicalization"
+    statement. Bridges the standard step (locked semantics) with the
+    normalized variant. -/
+theorem step_stripConfig_bisim (machine : TuringMachine.Machine) (c : Configuration) :
+    (step machine c).map stripConfig = stepNormalized machine (stripConfig c) := by
+  unfold stepNormalized step
+  have hState : (stripConfig c).state = c.state := rfl
+  have hHead : (stripConfig c).head = c.head := rfl
+  rw [hState, hHead]
+  by_cases hs : c.state == 0
+  · simp [hs]
+  · simp only [hs, Bool.false_eq_true, ↓reduceIte]
+    -- Reduce both sides via readHead_eq, then split by direction.
+    cases hdir : (machine.transition c.state c.head).direction with
+    | L =>
+      simp only [readHead_eq, stripConfig, Option.map_some]
+      apply congrArg some
+      congr 1
+      · -- stripTrailingZeros c.left.tail = stripTrailingZeros (stripTrailingZeros c.left).tail
+        rw [stripTrailingZeros_tail (stripTrailingZeros c.left),
+            stripTrailingZeros_idempotent, ← stripTrailingZeros_tail]
+      · -- c.left.headD 0 = (stripTrailingZeros c.left).headD 0
+        exact (stripTrailingZeros_headD c.left).symm
+      · -- stripTrailingZeros (write :: c.right) =
+        --   stripTrailingZeros (write :: stripTrailingZeros c.right)
+        exact (stripTrailingZeros_cons_strip _ _).symm
+    | R =>
+      simp only [readHead_eq, stripConfig, Option.map_some]
+      apply congrArg some
+      congr 1
+      · exact (stripTrailingZeros_cons_strip _ _).symm
+      · exact (stripTrailingZeros_headD c.right).symm
+      · rw [stripTrailingZeros_tail (stripTrailingZeros c.right),
+            stripTrailingZeros_idempotent, ← stripTrailingZeros_tail]
+
 end BiInfiniteTuringMachine
