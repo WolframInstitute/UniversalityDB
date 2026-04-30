@@ -28,6 +28,9 @@ import Proofs.GeneralizedShiftToTuringMachine
 import Proofs.CockeMinsky
 import Proofs.TagSystemToCyclicTagSystem
 import Proofs.ElementaryCellularAutomatonMirror
+import Proofs.ElementaryCellularAutomatonConjugation
+import Edges
+import EdgeAudit
 
 open Lean Elab Command
 
@@ -67,6 +70,14 @@ private def keyTheorems : List Name := [
   `ElementaryCellularAutomaton.mirrorSimulationSteps,
   `ElementaryCellularAutomaton.rule110SimulatesRule124,
   `ElementaryCellularAutomaton.rule124SimulatesRule110,
+  -- ECA conjugation: Rule 110 ↔ Rule 137 (complement) and Rule 110 ↔ Rule 193 (mirror∘complement)
+  `ElementaryCellularAutomaton.complementSimulationGeneral,
+  `ElementaryCellularAutomaton.mirrorSimulationGenericGeneral,
+  `ElementaryCellularAutomaton.mirrorComplementSimulation,
+  `ElementaryCellularAutomaton.rule110SimulatesRule137,
+  `ElementaryCellularAutomaton.rule137SimulatesRule110,
+  `ElementaryCellularAutomaton.rule110SimulatesRule193,
+  `ElementaryCellularAutomaton.rule193SimulatesRule110,
   -- Simulation framework
   `ComputationalMachine.Simulation.halting_preserved,
   `ComputationalMachine.Simulation.compose

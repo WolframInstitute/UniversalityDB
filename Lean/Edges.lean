@@ -26,6 +26,7 @@ import Proofs.GeneralizedShiftToTuringMachine
 import Proofs.CockeMinsky
 import Proofs.TagSystemToCyclicTagSystem
 import Proofs.ElementaryCellularAutomatonMirror
+import Proofs.ElementaryCellularAutomatonConjugation
 import Proofs.TMtoGS
 
 namespace UniversalityGraph
@@ -50,10 +51,11 @@ inductive ClaimShape
   /-- A universality claim (e.g. `IsUniversal wolfram23`). The Lean type is
       domain-specific; use the metadata to interpret it. -/
   | universalityClaim
-  /-- A `SimulationViaDecode source target` value: decode-based commutes,
-      with explicit `canon` for canonicalizing the target side. Used for
-      edges where strict-equality `Simulation` is structurally infeasible. -/
-  | simulationViaDecode
+  /-- A `SimulationEncoding source target` value: conjugation-based
+      `step_B(b) = decode (step_A^n (encode b))`. For edges with a natural
+      decode (e.g. Moore TM ↔ GS). Canonicalization, when needed, is on the
+      machine via `stepNormalized`, not as a structure field. -/
+  | simulationEncoding
   deriving DecidableEq, Repr
 
 /-- Audit metadata for one registered edge.
@@ -95,17 +97,52 @@ def edge_ECA124_ECA110 (n : Nat) (hn : n ≥ 3) :
       (ElementaryCellularAutomaton.toComputationalMachine ElementaryCellularAutomaton.rule110 n) :=
   ElementaryCellularAutomaton.rule124SimulatesRule110 n hn
 
+/- ── ECA Complement (Rule 110 ↔ Rule 137) ── -/
+
+/-- **Rule 110 simulates Rule 137** via bit complement of the tape. Bisimulation σ=1, τ=1.
+    Parametric in tape length; no length precondition (complement doesn't touch indices). -/
+def edge_ECA110_ECA137 (n : Nat) :
+    ComputationalMachine.Simulation
+      (ElementaryCellularAutomaton.toComputationalMachine ElementaryCellularAutomaton.rule110 n)
+      (ElementaryCellularAutomaton.toComputationalMachine ElementaryCellularAutomaton.rule137 n) :=
+  ElementaryCellularAutomaton.rule110SimulatesRule137 n
+
+/-- **Rule 137 simulates Rule 110** via bit complement of the tape (converse). -/
+def edge_ECA137_ECA110 (n : Nat) :
+    ComputationalMachine.Simulation
+      (ElementaryCellularAutomaton.toComputationalMachine ElementaryCellularAutomaton.rule137 n)
+      (ElementaryCellularAutomaton.toComputationalMachine ElementaryCellularAutomaton.rule110 n) :=
+  ElementaryCellularAutomaton.rule137SimulatesRule110 n
+
+/- ── ECA Mirror ∘ Complement (Rule 110 ↔ Rule 193) ── -/
+
+/-- **Rule 110 simulates Rule 193** via reversal + bit complement. Bisimulation σ=1, τ=1. -/
+def edge_ECA110_ECA193 (n : Nat) (hn : n ≥ 3) :
+    ComputationalMachine.Simulation
+      (ElementaryCellularAutomaton.toComputationalMachine ElementaryCellularAutomaton.rule110 n)
+      (ElementaryCellularAutomaton.toComputationalMachine ElementaryCellularAutomaton.rule193 n) :=
+  ElementaryCellularAutomaton.rule110SimulatesRule193 n hn
+
+/-- **Rule 193 simulates Rule 110** via reversal + bit complement (converse). -/
+def edge_ECA193_ECA110 (n : Nat) (hn : n ≥ 3) :
+    ComputationalMachine.Simulation
+      (ElementaryCellularAutomaton.toComputationalMachine ElementaryCellularAutomaton.rule193 n)
+      (ElementaryCellularAutomaton.toComputationalMachine ElementaryCellularAutomaton.rule110 n) :=
+  ElementaryCellularAutomaton.rule193SimulatesRule110 n hn
+
 /- ── TM → GS edge (Moore Theorem 7, fully proved) ──
    The proof and supporting helpers live in `Lean/Proofs/TMtoGS.lean`;
-   `SimulationViaDecode` lives in `Lean/SimulationEncoding.lean`. -/
+   `SimulationEncoding` lives in `Lean/SimulationEncoding.lean`. -/
 
-/-- **TM → GS edge** (Moore 1991, Theorem 7): returns a `SimulationViaDecode`
-    with `encode = encodeBiTM`, `decode = decodeBiTM ∘ normalize`,
-    `normalize = strip trailing zeros from BiTM tapes`. Reads as the canonical
-    decode-based commutes `b' = decode (Aⁿ (encode b))` modulo trailing-zero
-    canonicalization on the BiTM target side (which absorbs the `[0]`/`[]`
-    representation phantom that arises from a GS step shifting away from a
-    previously-empty tape).
+/-- **TM → GS edge** (Moore 1991, Theorem 7): returns a `SimulationEncoding`
+    with `encode = encodeBiTM`, `decode = decodeBiTMNormalized`. The B side
+    is `BiInfiniteTuringMachine.toComputationalMachineNormalized`, whose
+    `step` post-strips trailing zeros from the tapes — so step-results are
+    canonical and the conjugation reads strictly:
+    `step_B(b) = decode (step_A^n (encode b))`, no modulo.
+
+    The bridge to Moore's exact step lives in
+    `BiInfiniteTuringMachine.step_stripConfig_bisim` (a separate lemma).
 
     **Both `commutes` and `halting` fully proved** (see
     `TMtoGS.tmToGSSimulation` for the proof body).
@@ -118,10 +155,10 @@ def edge_TMtoGS (machine : TuringMachine.Machine)
       c.head < machine.numberOfSymbols)
     (hWriteBound : ∀ q a, (machine.transition q a).write < machine.numberOfSymbols)
     (hStateBound : ∀ q a, (machine.transition q a).nextState ≤ machine.numberOfStates) :
-    ComputationalMachine.SimulationViaDecode
+    ComputationalMachine.SimulationEncoding
       (GeneralizedShift.toComputationalMachine
         (TuringMachineToGeneralizedShift.fromBiTM machine))
-      (BiInfiniteTuringMachine.toComputationalMachine machine) :=
+      (BiInfiniteTuringMachine.toComputationalMachineNormalized machine) :=
   TMtoGS.tmToGSSimulation machine hk hHeadAll hWriteBound hStateBound
 
 /- ── GS → TM (Moore Theorem 8) ── -/
@@ -233,13 +270,53 @@ def edgeRegistry : List EdgeMetadata := [
     hypotheses := []
     parameters := ["n : Nat", "hn : n ≥ 3"]
     notes := "Tape reversal bisimulation; converse of edge_ECA110_ECA124." },
+  { shortName := "ECA110_ECA137"
+    theoremName := `UniversalityGraph.edge_ECA110_ECA137
+    sourceDescription := "ECA Rule 110 on Fin n → Fin 2"
+    targetDescription := "ECA Rule 137 on Fin n → Fin 2"
+    paperReference := "Folklore (complement symmetry: f(a,b,c) = ¬g(¬a,¬b,¬c); cf. Wolfram, NKS p.55)"
+    status := .unconditional
+    claimShape := .simulation
+    hypotheses := []
+    parameters := ["n : Nat"]
+    notes := "Bit-complement bisimulation, σ=1, τ=1. No length precondition (complement is index-preserving)." },
+  { shortName := "ECA137_ECA110"
+    theoremName := `UniversalityGraph.edge_ECA137_ECA110
+    sourceDescription := "ECA Rule 137 on Fin n → Fin 2"
+    targetDescription := "ECA Rule 110 on Fin n → Fin 2"
+    paperReference := "Folklore (same as above by involution)"
+    status := .unconditional
+    claimShape := .simulation
+    hypotheses := []
+    parameters := ["n : Nat"]
+    notes := "Bit-complement bisimulation; converse of edge_ECA110_ECA137." },
+  { shortName := "ECA110_ECA193"
+    theoremName := `UniversalityGraph.edge_ECA110_ECA193
+    sourceDescription := "ECA Rule 110 on Fin n → Fin 2"
+    targetDescription := "ECA Rule 193 on Fin n → Fin 2"
+    paperReference := "Folklore (composition mirror ∘ complement; Klein-4 orbit of rule 110)"
+    status := .unconditional
+    claimShape := .simulation
+    hypotheses := []
+    parameters := ["n : Nat", "hn : n ≥ 3"]
+    notes := "Reversal-and-complement bisimulation, σ=1, τ=1. Composes the mirror and complement Klein-4 generators." },
+  { shortName := "ECA193_ECA110"
+    theoremName := `UniversalityGraph.edge_ECA193_ECA110
+    sourceDescription := "ECA Rule 193 on Fin n → Fin 2"
+    targetDescription := "ECA Rule 110 on Fin n → Fin 2"
+    paperReference := "Folklore (same as above by involution)"
+    status := .unconditional
+    claimShape := .simulation
+    hypotheses := []
+    parameters := ["n : Nat", "hn : n ≥ 3"]
+    notes := "Reversal-and-complement bisimulation; converse of edge_ECA110_ECA193." },
   { shortName := "TM_GS"
     theoremName := `UniversalityGraph.edge_TMtoGS
     sourceDescription := "Standard GS fromBiTM(machine) (no step modification)"
-    targetDescription := "BiInfiniteTuringMachine machine (decoded modulo trailing-zero canonicalization)"
+    targetDescription := "BiInfiniteTuringMachine.toComputationalMachineNormalized machine (post-stripping step)"
     paperReference := "Moore 1991, Theorem 7"
     status := .conditional
-    claimShape := .simulationViaDecode
+    claimShape := .simulationEncoding
     hypotheses := [
       "_hk : numberOfSymbols > 0",
       "_hHeadAll : ∀ c, c.head < numberOfSymbols (well-formed configs)",
@@ -247,7 +324,7 @@ def edgeRegistry : List EdgeMetadata := [
       "_hStateBound : every transition's nextState ≤ numberOfStates"
     ]
     parameters := ["machine : TuringMachine.Machine"]
-    notes := "Uses SimulationViaDecode (decode-based commutes modulo `normalize`). Encode = encodeBiTM (Moore's exact). Decode = decodeBiTMNormalized (decodeBiTM + normalize tapes). Normalize = normalizeBiTMConfig (strip trailing zeros from BiTM tapes). Roundtrip pinned: `decode (encode b) = some (normalize b)`. Commutes reads as `b' = decode (Aⁿ (encode b))` modulo normalize. **Both halting and commutes fully proved (no sorry).** Closure: [propext, Quot.sound, Classical.choice]." },
+    notes := "Uses SimulationEncoding (conjugation: `step_B(b) = decode (step_A^n (encode b))`). Encode = encodeBiTM. Decode = decodeBiTMNormalized. B-side step is `stepNormalized` (Moore's step + strip trailing zeros), so b' is canonical and the conjugation is strict (no modulo). The bridge to Moore's exact step is `BiInfiniteTuringMachine.step_stripConfig_bisim`. **Both halting and commutes fully proved (no sorry).** Closure: [propext, Quot.sound, Classical.choice]." },
   { shortName := "GS_TM"
     theoremName := `UniversalityGraph.edge_GStoTM
     sourceDescription := "BiInfiniteTuringMachine toBiTM(params)"

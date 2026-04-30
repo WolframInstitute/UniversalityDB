@@ -19,8 +19,8 @@ README.md               public overview with Wolfram Cloud notebook links
 lakefile.lean           symlink to Lean/lakefile.lean (required by leanblueprint)
 
 Scripts/                shell and wolframscript utilities
-  generate_notebooks.wls  convert .md -> .nb locally
-  publish_notebooks.wls   convert .md -> .nb, upload to Wolfram Cloud
+  generate_notebooks.wls  convert .md -> .nb and evaluate locally (cache outputs)
+  publish_notebooks.wls   upload existing Notebooks/*.nb to Wolfram Cloud
   recover_resources.sh    download all resource PDFs
 
 Lean/                   entire Lean 4 project
@@ -115,7 +115,9 @@ Add to `Blueprint/chapter/verified.tex` with `\lean{}` and `\leanok` annotations
 
 ```bash
 cd Lean && lake build
-./publish_notebooks.wls
+Scripts/generate_notebooks.wls   # convert + evaluate locally
+# inspect Notebooks/*.nb to confirm outputs render correctly
+Scripts/publish_notebooks.wls    # upload to Wolfram Cloud
 leanblueprint web
 ```
 
@@ -125,7 +127,7 @@ Add the Wolfram Cloud link to `README.md`.
 
 ### Notebooks
 
-Notebook sources live in `Wiki/Notebooks/*.md` (tracked in git). The `.nb` files are generated into `Notebooks/` (gitignored) via `Scripts/generate_notebooks.wls`. Published to Wolfram Cloud via `Scripts/publish_notebooks.wls`.
+Notebook sources live in `Wiki/Notebooks/*.md` (tracked in git). The `.nb` files are generated into `Notebooks/` (gitignored) via `Scripts/generate_notebooks.wls`, which also **evaluates** each notebook locally so output cells (Lean type signatures, plots, etc.) are cached. After evaluation, inspect `Notebooks/*.nb` locally — then upload to Wolfram Cloud via `Scripts/publish_notebooks.wls`, which only uploads (no re-evaluation).
 
 **README.md lists all notebooks** with three links each: the wiki `.md` source, the local `.nb` path, and the Wolfram Cloud URL (if published).
 
@@ -381,8 +383,8 @@ When the user returns and says "continue tour" or "where were we":
 |---|---|
 | `Scripts/verify_integrity.sh` | Proof integrity checks + build |
 | `cd Lean && lake build` | Build Lean project |
-| `Scripts/generate_notebooks.wls` | Convert `Wiki/Notebooks/*.md` → `Notebooks/*.nb` locally |
-| `Scripts/publish_notebooks.wls` | Convert + upload to Wolfram Cloud |
+| `Scripts/generate_notebooks.wls` | Convert `Wiki/Notebooks/*.md` → `Notebooks/*.nb` and evaluate locally |
+| `Scripts/publish_notebooks.wls` | Upload existing `Notebooks/*.nb` to Wolfram Cloud (no re-evaluation) |
 | `Scripts/recover_resources.sh` | Rebuild `Resources/` from `Wiki/Resources/*.md` `## Recover` sections |
 | `leanblueprint web` | Build interactive Blueprint |
 | `leanblueprint serve` | Serve Blueprint locally |

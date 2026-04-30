@@ -1,38 +1,36 @@
 #!/usr/bin/env wolframscript
 
-(* publish_notebooks.wls — Convert Wiki/Notebooks/*.md -> .nb and upload to Wolfram Cloud *)
+(* publish_notebooks.wls — Upload Notebooks/*.nb to Wolfram Cloud.
+
+   Assumes Notebooks/*.nb already exist (run Scripts/generate_notebooks.wls
+   first). This script does NOT convert .md or evaluate cells; it just
+   uploads whatever is on disk, so you can inspect locally before publishing. *)
 
 root = ParentDirectory[ DirectoryName[ ExpandFileName[ $ScriptCommandLine[[ 1 ]] ] ] ];
-srcDir = FileNameJoin[ { root, "Wiki", "Notebooks" } ];
 outDir = FileNameJoin[ { root, "Notebooks" } ];
 
-mdFiles = FileNames[ "*.md", srcDir ];
+nbFiles = FileNames[ "*.nb", outDir ];
 
-If[ mdFiles === {},
-  Print[ "No .md files found in ", srcDir ];
+If[ nbFiles === {},
+  Print[ "No .nb files in ", outDir, ". Run Scripts/generate_notebooks.wls first." ];
   Exit[ 1 ] ];
-
-If[ !DirectoryQ[ outDir ], CreateDirectory[ outDir ] ];
 
 Print[ "Universality Graph Notebook Publisher" ];
 Print[ "======================================" ];
+Print[ "Uploading ", Length[ nbFiles ], " notebook(s) to Wolfram Cloud." ];
+Print[ "" ];
 
 results = {};
 
 Do[
-  baseName = FileBaseName[ mdFile ];
-  nbFile = FileNameJoin[ { outDir, baseName <> ".nb" } ];
-
-  Print[ "[", baseName, "] Converting .md -> .nb..." ];
-  Export[ nbFile, ImportString[ Import[ mdFile, "Text" ], { "Markdown", "Notebook" } ] ];
-
-  Print[ "[", baseName, "] Uploading to Wolfram Cloud..." ];
+  baseName = FileBaseName[ nbFile ];
+  Print[ "[", baseName, "] Uploading..." ];
   cloudObj = CloudObject[ "UniversalityGraph/" <> baseName <> ".nb", Permissions -> "Public" ];
   CopyFile[ nbFile, cloudObj, OverwriteTarget -> True ];
   Print[ "[", baseName, "] Published: ", First[ cloudObj ] ];
   Print[ "" ];
   AppendTo[ results, baseName -> ToString[ First[ cloudObj ] ] ],
-  { mdFile, mdFiles } ];
+  { nbFile, nbFiles } ];
 
 Print[ "======================================" ];
 Do[ Print[ "  ", r[[ 1 ]], ": ", r[[ 2 ]] ], { r, results } ];

@@ -20,5 +20,6 @@ Key theorems:
 
 ## See also
 
+- [ECAConjugation](ECAConjugation.md) — Klein-4 framework generalising this proof to complement and combined symmetries
 - [ElementaryCellularAutomaton](../Systems/ElementaryCellularAutomaton.md) — the system family
 - [Cook2004](../Resources/Cook2004.md) — Rule 110 universality

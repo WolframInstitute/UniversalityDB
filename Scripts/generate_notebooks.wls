@@ -18,7 +18,19 @@ Do[
   baseName = FileBaseName[ mdFile ];
   nbFile = FileNameJoin[ { outDir, baseName <> ".nb" } ];
   Print[ "[", baseName, "] Wiki/Notebooks/", baseName, ".md -> Notebooks/", baseName, ".nb" ];
-  Export[ nbFile, ImportString[ Import[ mdFile, "Text" ], { "Markdown", "Notebook" } ] ],
+  Export[ nbFile, ImportString[ Import[ mdFile, "Text" ], { "Markdown", "Notebook" } ] ];
+
+  Print[ "[", baseName, "] Evaluating notebook (cells with cached outputs)..." ];
+  evalOk = Check[
+    UsingFrontEnd[
+      notebook = NotebookOpen[ nbFile, Visible -> False ];
+      NotebookEvaluate[ notebook, InsertResults -> True ];
+      NotebookSave[ notebook ];
+      NotebookClose[ notebook ] ];
+    True,
+    False ];
+  If[ !evalOk,
+    Print[ "[", baseName, "] Evaluation failed; falling back to unevaluated .nb." ] ],
   { mdFile, mdFiles } ];
 
 Print[ "Done. Generated ", Length[ mdFiles ], " notebook(s) in Notebooks/." ];

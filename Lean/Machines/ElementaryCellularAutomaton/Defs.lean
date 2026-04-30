@@ -19,6 +19,7 @@ def ruleTable (ruleNumber : Nat) (a b c : Fin 2) : Fin 2 :=
 def rule110 : Fin 2 → Fin 2 → Fin 2 → Fin 2 := ruleTable 110
 def rule124 : Fin 2 → Fin 2 → Fin 2 → Fin 2 := ruleTable 124
 def rule137 : Fin 2 → Fin 2 → Fin 2 → Fin 2 := ruleTable 137
+def rule193 : Fin 2 → Fin 2 → Fin 2 → Fin 2 := ruleTable 193
 
 def step (rule : Fin 2 → Fin 2 → Fin 2 → Fin 2) (n : Nat) (tape : Fin n → Fin 2) :
     Fin n → Fin 2 :=

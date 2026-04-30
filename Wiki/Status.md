@@ -1,23 +1,27 @@
 # Project Status
 
-Last updated: 2026-04-30
+Last updated: 2026-05-01
 
 ## Simulation framework
 
-`Lean/SimulationEncoding.lean` currently defines four templates: `Simulation`,
-`SimulationEncoding`, `HaltingSimulation`, `SimulationViaDecode`. Of these,
-`Simulation` is used by 4 edges, `SimulationViaDecode` by 1, and the other
-two are mostly scaffolding (`HaltingSimulation` is referenced by
-`wolfram23HaltingSimulation`, `SimulationEncoding` is currently unused).
+`Lean/SimulationEncoding.lean` defines three templates in increasing strength:
+`HaltingSimulation`, `Simulation`, `SimulationEncoding`. `Simulation` is used by
+4 edges (canonical, composable); `SimulationEncoding` (the conjugation form) is
+used by 1 edge (TM → GS); `HaltingSimulation` is used by `wolfram23HaltingSimulation`.
+
+The dead-code `SimulationViaDecode` (with `roundtrip + normalize` fields) was
+removed in favor of `SimulationEncoding`, which carries pure conjugation:
+`step_B(b) = decode (step_A^n (encode b))`. Canonicalization, when needed, is
+on the *machine* via `stepNormalized` plus a bisimulation lemma — not as a
+structure field.
 
 Every machine family has a `toComputationalMachine` wrapper in its `Defs.lean`.
 Bi-infinite-tape machines also expose a `stepNormalized` /
 `toComputationalMachineNormalized` variant that post-strips trailing zeros from
 both tapes (`Lean/Machines/GeneralizedShift/Defs.lean`,
-`Lean/Machines/BiInfiniteTuringMachine/Defs.lean`). These canonicalize the
-representation so the encode of a BiTM config lands in the image-preserving
-subset of GS configs — usable for a future unification of all simulations
-under a single decode-based template.
+`Lean/Machines/BiInfiniteTuringMachine/Defs.lean`). The TM → GS edge targets
+the normalized BiTM, which is what makes the conjugation in `SimulationEncoding`
+strict (no `modulo normalize`).
 
 `BiInfiniteTuringMachine.step_stripConfig_bisim` proves the bisimulation
 `(step c).map stripConfig = stepNormalized (stripConfig c)` — i.e., the
@@ -33,10 +37,12 @@ deferred — paper-and-pencil-clear, tedious case analysis (cells × right tape
 
 | Edge | File | Template | Overhead | Sorry in proof |
 |---|---|---|---|---|
-| TM → GS (Moore Thm 7) | `Lean/Proofs/TMtoGS.lean` | `SimulationViaDecode` | σ=1, τ=1 | 0 (4 well-formedness hypotheses) |
+| TM → GS (Moore Thm 7) | `Lean/Proofs/TMtoGS.lean` | `SimulationEncoding` (conjugation) | σ=1, τ=1 | 0 (4 well-formedness hypotheses) |
 | GS → TM (Moore Thm 8) | `Lean/Proofs/GeneralizedShiftToTuringMachine.lean` | `Simulation` | σ=1, τ≤2(w-1)+m | 2 (`fullSim_general` for w≥2; `gsToTMSimulation` reconstructed at wrapper) |
 | Tag → CyclicTag (Cook 2004) | `Lean/Proofs/TagSystemToCyclicTagSystem.lean` | `Simulation` | 1 tag step = 2k CTS steps | 1 (halting for single-element tag words) |
 | ECA Rule 110 ↔ Rule 124 | `Lean/Proofs/ElementaryCellularAutomatonMirror.lean` | `Simulation` | σ=1, τ=1 | 0 |
+| ECA Rule 110 ↔ Rule 137 (complement) | `Lean/Proofs/ElementaryCellularAutomatonConjugation.lean` | `Simulation` | σ=1, τ=1 | 0 |
+| ECA Rule 110 ↔ Rule 193 (mirror ∘ complement) | `Lean/Proofs/ElementaryCellularAutomatonConjugation.lean` | `Simulation` | σ=1, τ=1 | 0 |
 
 ## Hypothetical edges (stated as hypotheses)
 
@@ -57,12 +63,16 @@ Run `Scripts/verify_integrity.sh` to verify. The script uses `CollectAxioms.coll
 
 ## Edge registry
 
-[Lean/Edges.lean](../Lean/Edges.lean) contains the registered edges as named typed wrappers; [Lean/EdgeAudit.lean](../Lean/EdgeAudit.lean) prints an audit trail at build time (machines, paper ref, hypothesis list, axiom closure). **Six** edges registered (`EDGE AUDIT: PASS (6 edges)` at build time):
+[Lean/Edges.lean](../Lean/Edges.lean) contains the registered edges as named typed wrappers; [Lean/EdgeAudit.lean](../Lean/EdgeAudit.lean) prints an audit trail at build time (machines, paper ref, hypothesis list, axiom closure). **Ten** edges registered (`EDGE AUDIT: PASS (10 edges)` at build time):
 
 | Edge | Status | Top-level hypotheses | Wrapper axioms |
 |---|---|---|---|
 | `edge_ECA110_ECA124` | unconditional | (none) | propext, Quot.sound |
 | `edge_ECA124_ECA110` | unconditional | (none) | propext, Quot.sound |
+| `edge_ECA110_ECA137` | unconditional | (none) | propext, Quot.sound |
+| `edge_ECA137_ECA110` | unconditional | (none) | propext, Quot.sound |
+| `edge_ECA110_ECA193` | unconditional | (none) | propext, Quot.sound |
+| `edge_ECA193_ECA110` | unconditional | (none) | propext, Quot.sound |
 | `edge_TMtoGS` | conditional (4 well-formedness assumptions) | hk, hHeadAll, hWriteBound, hStateBound — **commutes and halting fully proved** | propext, Quot.sound, Classical.choice |
 | `edge_GStoTM` | conditional | `hSim`, `hLen`, `hShift`, `hHalt` | propext |
 | `edge_TagtoCTS` | conditional | `hHalt` (single-element tag word case) | propext, Quot.sound, Classical.choice |
@@ -85,24 +95,19 @@ Each family has a `toComputationalMachine` wrapper and an `iterationStep_eq_exac
 
 ## Simulation framework
 
-`Lean/SimulationEncoding.lean` defines four templates:
+`Lean/SimulationEncoding.lean` defines three templates:
 
 | Structure | Fields | Use |
 |---|---|---|
-| `Simulation A B` | `encode`, `commutes`, `halting` | Step-level strict-equality simulation (4 edges) |
-| `SimulationViaDecode A B` | `encode`, `decode`, `normalize`, `roundtrip`, `commutes`, `halting` | Decode-based commutes modulo `normalize` (TM→GS) |
 | `HaltingSimulation A B` | `encode`, `preserves_halting` | Halting preservation only (e.g. Smith) |
-| `SimulationEncoding A B` | `encode`, `decode`, `roundtrip`, `commutes` | Full encoding with decode (currently unused) |
+| `Simulation A B` | `encode`, `commutes`, `halting` | Canonical step-level simulation (4 edges). Composes. |
+| `SimulationEncoding A B` | `encode`, `decode`, `commutes`, `halting` | Conjugation form `step_B = decode ∘ step_A^n ∘ encode` (TM→GS) |
 
-`Simulation` composes via `Simulation.compose` and derives `halting_preserved`. `HaltingSimulation` composes via `HaltingSimulation.compose`.
-
-The "agreed" template form is the decode-based commutes `B.step b ≃ (A.iterationStep n (encode b)).bind decode`. A future refactor should consolidate around a single `Simulation` carrying `encode + decode + roundtrip + commutes + halting`. The `stepNormalized` helpers added to `GeneralizedShift/Defs.lean` and `BiInfiniteTuringMachine/Defs.lean` are the substrate for that future unification (they post-strip trailing zeros so encoded configs land in a canonical, image-preserving subset).
+`Simulation` composes via `Simulation.compose` and derives `halting_preserved`. `HaltingSimulation` composes via `HaltingSimulation.compose`. `SimulationEncoding` is a presentation form for edges with a natural decode; it doesn't compose (and doesn't need to — composition flows through `Simulation`).
 
 ## Current focus
 
 GS → TM general width: all building blocks fully proved (readScan, lastRead, writeLoop, writeZeroShift — 0 sorry). One sorry remains in `fullSim_general` — the composition that chains the 4 phases via `exactSteps_append`. See `Wiki/Plans/GStoTM_GeneralWidth.md`.
-
-Template unification (single `Simulation` template, decode-based form) is on the roadmap but blocked on a non-trivial decode/roundtrip proof for Tag → CTS (one-hot block parser + injectivity lemma). The `stepNormalized` helpers landed in this session as the foundation; the migration of the 4 existing simulations is deferred.
 
 ## See also
 

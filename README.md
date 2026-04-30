@@ -18,6 +18,7 @@ The generated data is organized as a **universality graph**: vertices are comput
 |---|---|---|
 | TM ↔ Generalized Shift (Moore 1991) | [Wiki/Notebooks/TM_GS.md](Wiki/Notebooks/TM_GS.md) | [Wolfram Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/TM_GS.nb) |
 | Cocke–Minsky Chain (TM → Tag → CTS → (2,3) TM) | [Wiki/Notebooks/CockeMinsky.md](Wiki/Notebooks/CockeMinsky.md) | [Wolfram Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/CockeMinsky.nb) |
+| ECA Klein-4 Symmetries (Mirror, Complement, Combined) | [Wiki/Notebooks/ECASymmetries.md](Wiki/Notebooks/ECASymmetries.md) | — |
 | The Universality Graph | [Wiki/Notebooks/UniversalityGraph.md](Wiki/Notebooks/UniversalityGraph.md) | [Wolfram Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/UniversalityGraph.nb) |
 | Cross-Validation (Lean vs. Wolfram) | [Wiki/Notebooks/CrossValidation.md](Wiki/Notebooks/CrossValidation.md) | — |
 
@@ -27,11 +28,11 @@ Browse the **[knowledge base](Wiki/Index.md)** for articles on every system, pro
 
 ## ✅ Lean-Verified Simulation Edges
 
-All edges use a generic `Simulation` template (`Lean/SimulationEncoding.lean`) — the type checker guarantees correctness of each simulation statement. Each proof file has standalone lemmas assembled into the template.
+Three layered simulation templates in [`Lean/SimulationEncoding.lean`](Lean/SimulationEncoding.lean): `HaltingSimulation` (halting only), `Simulation` (encode + step correspondence + halting; composable, used by most edges), `SimulationEncoding` (conjugation form `step_B(b) = decode (step_A^n (encode b))`; for edges with a natural decode). The type checker guarantees correctness of each simulation statement.
 
 | Edge | Overhead | Template | Reference | Sorry |
 |---|---|---|---|---|
-| TM → Generalized Shift | σ=1, τ=1 | `Simulation` | Moore 1991, Thm 7 | 0 |
+| TM → Generalized Shift | σ=1, τ=1 | `SimulationEncoding` | Moore 1991, Thm 7 | 0 |
 | Generalized Shift → TM | σ=1, τ≤2(w−1)+m | `Simulation` | Moore 1991, Thm 8 | 1 (w≥2 composition) |
 | 2-Tag → Cyclic Tag System | σ=k (one-hot), τ=2k | `Simulation` | Cook 2004 | 1 (halting for |word|=1) |
 | ECA Rule 110 ↔ Rule 124 | σ=1, τ=1 | `Simulation` | Tape reversal | 0 |
@@ -40,7 +41,7 @@ All edges use a generic `Simulation` template (`Lean/SimulationEncoding.lean`) �
 
 | Theorem | Template | Hypotheses | Reference |
 |---|---|---|---|
-| Wolfram's (2,3) TM is universal | `HaltingSimulation` | `CockeMinskyStepSimulation`, `SmithSimulation` | Cocke-Minsky 1964 + Cook 2004 + Smith 2007 |
+| Wolfram's (2,3) TM is universal | `IsUniversal` (uses `HaltingSimulation`) | `CockeMinskyStepSimulation` (every TM), `SmithSimulation` | Cocke-Minsky 1964 + Cook 2004 + Smith 2007 |
 
 ## Verification
 
