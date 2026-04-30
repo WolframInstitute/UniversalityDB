@@ -26,7 +26,7 @@ import Proofs.GeneralizedShiftToTuringMachine
 import Proofs.CockeMinsky
 import Proofs.TagSystemToCyclicTagSystem
 import Proofs.ElementaryCellularAutomatonMirror
-import Proofs.TMtoGS_ViaDecode
+import Proofs.TMtoGS
 
 namespace UniversalityGraph
 
@@ -95,23 +95,24 @@ def edge_ECA124_ECA110 (n : Nat) (hn : n ≥ 3) :
       (ElementaryCellularAutomaton.toComputationalMachine ElementaryCellularAutomaton.rule110 n) :=
   ElementaryCellularAutomaton.rule124SimulatesRule110 n hn
 
-/- ── TM → GS edge (decode-based, fully proved) ──
-   The proof and supporting helpers live in `Lean/Proofs/TMtoGS_ViaDecode.lean`;
+/- ── TM → GS edge (Moore Theorem 7, fully proved) ──
+   The proof and supporting helpers live in `Lean/Proofs/TMtoGS.lean`;
    `SimulationViaDecode` lives in `Lean/SimulationEncoding.lean`. -/
 
-/-- **TM → GS edge (via decode-based commutes)**: returns a `SimulationViaDecode`
+/-- **TM → GS edge** (Moore 1991, Theorem 7): returns a `SimulationViaDecode`
     with `encode = encodeBiTM`, `decode = decodeBiTM ∘ normalize`,
-    `normalize = strip trailing zeros from BiTM tapes`. Reads as conjugation
-    `decode ∘ A^n ∘ encode = some ∘ normalize ∘ B.step`. The `[0]`/`[]`
+    `normalize = strip trailing zeros from BiTM tapes`. Reads as the canonical
+    decode-based commutes `b' = decode (Aⁿ (encode b))` modulo trailing-zero
+    canonicalization on the BiTM target side (which absorbs the `[0]`/`[]`
     representation phantom that arises from a GS step shifting away from a
-    previously-empty tape side is absorbed by `normalize`.
+    previously-empty tape).
 
     **Both `commutes` and `halting` fully proved** (see
-    `TMtoGS_ViaDecode.tmToGSSimulationViaDecode` for the proof body).
+    `TMtoGS.tmToGSSimulation` for the proof body).
     Closure: `[propext, Quot.sound, Classical.choice]`.
 
     Hypotheses are well-formedness conditions on the machine. -/
-def edge_TMtoGS_viaDecode (machine : TuringMachine.Machine)
+def edge_TMtoGS (machine : TuringMachine.Machine)
     (hk : machine.numberOfSymbols > 0)
     (hHeadAll : ∀ c : BiInfiniteTuringMachine.Configuration,
       c.head < machine.numberOfSymbols)
@@ -121,7 +122,7 @@ def edge_TMtoGS_viaDecode (machine : TuringMachine.Machine)
       (GeneralizedShift.toComputationalMachine
         (TuringMachineToGeneralizedShift.fromBiTM machine))
       (BiInfiniteTuringMachine.toComputationalMachine machine) :=
-  TMtoGS_ViaDecode.tmToGSSimulationViaDecode machine hk hHeadAll hWriteBound hStateBound
+  TMtoGS.tmToGSSimulation machine hk hHeadAll hWriteBound hStateBound
 
 /- ── GS → TM (Moore Theorem 8) ── -/
 
@@ -232,11 +233,11 @@ def edgeRegistry : List EdgeMetadata := [
     hypotheses := []
     parameters := ["n : Nat", "hn : n ≥ 3"]
     notes := "Tape reversal bisimulation; converse of edge_ECA110_ECA124." },
-  { shortName := "TM_GS_viaDecode"
-    theoremName := `UniversalityGraph.edge_TMtoGS_viaDecode
+  { shortName := "TM_GS"
+    theoremName := `UniversalityGraph.edge_TMtoGS
     sourceDescription := "Standard GS fromBiTM(machine) (no step modification)"
     targetDescription := "BiInfiniteTuringMachine machine (decoded modulo trailing-zero canonicalization)"
-    paperReference := "Moore 1991, Theorem 7 — decode-based commutes variant"
+    paperReference := "Moore 1991, Theorem 7"
     status := .conditional
     claimShape := .simulationViaDecode
     hypotheses := [
@@ -246,7 +247,7 @@ def edgeRegistry : List EdgeMetadata := [
       "_hStateBound : every transition's nextState ≤ numberOfStates"
     ]
     parameters := ["machine : TuringMachine.Machine"]
-    notes := "Uses SimulationViaDecode (conjugation modulo `normalize`). Encode = encodeBiTM (Moore's exact). Decode = decodeBiTMNormalized (decodeBiTM + normalize tapes). Normalize = normalizeBiTMConfig (strip trailing zeros from BiTM tapes). Roundtrip pinned: `decode (encode b) = some (normalize b)`. Commutes reads as conjugation: `decode a = some (normalize b')`. **Both halting and commutes fully proved (no sorry).** Closure: [propext, Quot.sound, Classical.choice]." },
+    notes := "Uses SimulationViaDecode (decode-based commutes modulo `normalize`). Encode = encodeBiTM (Moore's exact). Decode = decodeBiTMNormalized (decodeBiTM + normalize tapes). Normalize = normalizeBiTMConfig (strip trailing zeros from BiTM tapes). Roundtrip pinned: `decode (encode b) = some (normalize b)`. Commutes reads as `b' = decode (Aⁿ (encode b))` modulo normalize. **Both halting and commutes fully proved (no sorry).** Closure: [propext, Quot.sound, Classical.choice]." },
   { shortName := "GS_TM"
     theoremName := `UniversalityGraph.edge_GStoTM
     sourceDescription := "BiInfiniteTuringMachine toBiTM(params)"

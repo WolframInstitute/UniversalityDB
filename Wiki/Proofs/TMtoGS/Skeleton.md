@@ -125,7 +125,7 @@ structure SimulationViaDecode (A B : ComputationalMachine) where
 
 The crucial difference from `Simulation`: `decode a = some (canon b')` instead of `a = encode b'`. This **lets the GS step result `a` differ from `encode b'`** as long as decoding it (after canonicalization) gives back `b'` modulo `canon`.
 
-Edge `edge_TMtoGS_viaDecode` registered in [Lean/Edges.lean](../../../Lean/Edges.lean) with:
+Edge `edge_TMtoGS` registered in [Lean/Edges.lean](../../../Lean/Edges.lean) with:
 - `encode = encodeBiTM` (Moore's exact, no normalization)
 - `decode = decodeBiTMNormalized` (`decodeBiTM` + `normalize` on BiTM tapes)
 - `canon = normalizeBiTMConfig` (BiTM-side trailing-zero stripping)

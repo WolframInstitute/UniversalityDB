@@ -1,15 +1,16 @@
 /-
-  TMtoGS_ViaDecode
+  TMtoGS
 
-  TM → GS simulation in the decode-based formulation (`SimulationViaDecode`).
+  TM → GS simulation (Moore Theorem 7), decode-based formulation.
 
   Setup:
   - encode = `encodeBiTM` (Moore's exact)
   - decode = `decodeBiTM` followed by `normalize` on left/right tapes
 
-  The decode-based commutes lets the `[0]`/`[]` representation phantom that
-  arises when the GS step shifts away from a previously-empty tape side be
-  absorbed by normalization on the BiTM target side.
+  The commutes property reads `b' = decode (Aⁿ (encode b))` modulo
+  trailing-zero canonicalization on the BiTM target side. This absorbs
+  the `[0]`/`[]` representation phantom that arises when the GS step
+  shifts away from a previously-empty tape.
 
   Contents:
   - `biTMStepUniform`: a `headD`/`tail` reformulation of `BiInfiniteTuringMachine.step`
@@ -17,7 +18,7 @@
   - `normalize_consHeadD_dropOne` — the algebraic heart of the proof.
   - BiTM-side canonicalization helpers (`normalizeBiTMConfig`,
     `decodeBiTMNormalized`, `decodeBiTMNormalized_encode_eq`).
-  - The main theorem `tmToGSSimulationViaDecode`.
+  - The main theorem `tmToGSSimulation`.
 -/
 
 import Machines.BiInfiniteTuringMachine.Defs
@@ -25,7 +26,7 @@ import Machines.GeneralizedShift.Defs
 import Proofs.TuringMachineToGeneralizedShift
 import SimulationEncoding
 
-namespace TMtoGS_ViaDecode
+namespace TMtoGS
 
 /- ============================================================================
    Uniform reformulation of `BiInfiniteTuringMachine.step` (using `headD`/`tail`
@@ -154,12 +155,12 @@ theorem decodeBiTMNormalized_encode_eq (machine : TuringMachine.Machine)
    - `hStateBound` : every transition's `nextState ≤ numberOfStates`
    ============================================================================ -/
 
-/-- **TM → GS edge** as a `SimulationViaDecode`: every BiTM step lifts to one
+/-- **TM → GS edge** (Moore Theorem 7): every BiTM step lifts to one
     standard-GS step, and decoding the result (with BiTM-side normalization)
     recovers the canonical form of the BiTM step's result.
 
     Closed proof; conditional only on machine well-formedness. -/
-def tmToGSSimulationViaDecode (machine : TuringMachine.Machine)
+def tmToGSSimulation (machine : TuringMachine.Machine)
     (_hk : machine.numberOfSymbols > 0)
     (_hHeadAll : ∀ c : BiInfiniteTuringMachine.Configuration,
       c.head < machine.numberOfSymbols)
@@ -457,4 +458,4 @@ def tmToGSSimulationViaDecode (machine : TuringMachine.Machine)
           , show ¬ (config.head ≥ machine.numberOfSymbols) from by omega]
     rw [this]; rfl
 
-end TMtoGS_ViaDecode
+end TMtoGS
