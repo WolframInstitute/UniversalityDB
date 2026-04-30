@@ -18,7 +18,7 @@ The generated data is organized as a **universality graph**: vertices are comput
 |---|---|---|
 | TM ↔ Generalized Shift (Moore 1991) | [Wiki/Notebooks/TM_GS.md](Wiki/Notebooks/TM_GS.md) | [Wolfram Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/TM_GS.nb) |
 | Cocke–Minsky Chain (TM → Tag → CTS → (2,3) TM) | [Wiki/Notebooks/CockeMinsky.md](Wiki/Notebooks/CockeMinsky.md) | [Wolfram Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/CockeMinsky.nb) |
-| ECA Klein-4 Symmetries (Mirror, Complement, Combined) | [Wiki/Notebooks/ECASymmetries.md](Wiki/Notebooks/ECASymmetries.md) | — |
+| ECA Klein-4 Symmetries (Mirror, Complement, Combined) | [Wiki/Notebooks/ECASymmetries.md](Wiki/Notebooks/ECASymmetries.md) | [Wolfram Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/ECASymmetries.nb) |
 | The Universality Graph | [Wiki/Notebooks/UniversalityGraph.md](Wiki/Notebooks/UniversalityGraph.md) | [Wolfram Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/UniversalityGraph.nb) |
 | Cross-Validation (Lean vs. Wolfram) | [Wiki/Notebooks/CrossValidation.md](Wiki/Notebooks/CrossValidation.md) | — |
 
