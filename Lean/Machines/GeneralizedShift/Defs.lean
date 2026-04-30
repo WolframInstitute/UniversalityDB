@@ -155,5 +155,40 @@ theorem iterationStep_eq_exactSteps (machine : Machine) (config : Configuration)
     | none => rfl
     | some config' => exact ih config'
 
+-- ============================================================================
+-- Normalized GS step: post-strips trailing zeros from `left` and `right` tapes
+-- so the canonical bi-infinite-tape representation `[]` and `[0,0,...]` are
+-- not distinguished. This is THE GS variant used for simulations against
+-- bi-infinite-tape machines (Moore 1991, Theorem 7).
+-- ============================================================================
+
+def stripConfig (config : Configuration) : Configuration :=
+  { config with
+    left  := stripTrailingZeros config.left
+    right := stripTrailingZeros config.right }
+
+def stepNormalized (machine : Machine) (config : Configuration) : Option Configuration :=
+  (step machine config).map stripConfig
+
+def exactStepsNormalized (machine : Machine) (config : Configuration) : Nat → Option Configuration
+  | 0 => some config
+  | n + 1 =>
+    match stepNormalized machine config with
+    | none => none
+    | some config' => exactStepsNormalized machine config' n
+
+def toComputationalMachineNormalized (machine : Machine) : ComputationalMachine where
+  Configuration := Configuration
+  step := stepNormalized machine
+
+theorem iterationStep_normalized_eq_exactSteps (machine : Machine) (config : Configuration) (n : Nat) :
+    (toComputationalMachineNormalized machine).iterationStep n config = exactStepsNormalized machine config n := by
+  induction n generalizing config with
+  | zero => rfl
+  | succ n ih =>
+    simp [ComputationalMachine.iterationStep, toComputationalMachineNormalized, exactStepsNormalized]
+    cases stepNormalized machine config with
+    | none => rfl
+    | some config' => exact ih config'
 
 end GeneralizedShift
