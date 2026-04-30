@@ -13,6 +13,7 @@ Knowledge base for the Universality Graph project. Maintained by the LLM after e
 - [GS→TM General Width](Plans/GStoTM_GeneralWidth.md) — extending step simulation to all window widths
 - [Next Edges](Plans/NextEdges.md) — candidates for the next formalization target
 - [Action Items](Plans/ActionItems.md) — next steps and TODOs
+- [Verification Framework](Plans/VerificationFramework.md) — auditable edges (Lean/Edges.lean) and paper-driven proof skeletons
 
 
 ## Tour
@@ -30,10 +31,15 @@ Interactive guided walk through the project — say **"start tour"** to begin. T
 ## Proofs (edges in the graph)
 
 - [TM → GS](Proofs/TMtoGS.md) — Moore Theorem 7, σ=1 τ=1, fully proved
+  - [TM → GS Skeleton](Proofs/TMtoGS/Skeleton.md) — paper-driven layered DAG
 - [GS → TM](Proofs/GStoTM.md) — Moore Theorem 8, σ=1 τ≤2(w-1)+m, fully proved (w=1)
+  - [GS → TM Skeleton](Proofs/GStoTM/Skeleton.md) — paper-driven layered DAG
 - [Tag → CTS](Proofs/TagToCTS.md) — Cook's encoding, fully proved
+  - [Tag → CTS Skeleton](Proofs/TagToCTS/Skeleton.md) — paper-driven layered DAG
 - [Cocke-Minsky Chain](Proofs/CockeMinskyChain.md) — TM → Tag → CTS → (2,3) TM, hypotheses remain
+  - [Cocke-Minsky Chain Skeleton](Proofs/CockeMinskyChain/Skeleton.md) — paper-driven layered DAG
 - [ECA Mirror](Proofs/ECAMirror.md) — Rule 110 ↔ 124 via tape reversal, fully proved
+  - [ECA Mirror Skeleton](Proofs/ECAMirror/Skeleton.md) — paper-driven layered DAG (demo of new framework)
 
 ## Concepts
 

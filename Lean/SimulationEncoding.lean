@@ -173,4 +173,38 @@ def SimulationEncoding.toSimulation {A B : ComputationalMachine}
   commutes := se.commutes
   halting := h_halting
 
+/-
+  SimulationViaDecode
+
+  A more flexible simulation framework where commutes is expressed via decode
+  modulo a `normalize` operation on B-configurations. Reads as conjugation:
+
+      decode ∘ A^n ∘ encode  =  some ∘ normalize ∘ B.step
+
+  i.e., running A and decoding gives the *normalized* form of B's next state.
+  When `normalize := id`, this is strict conjugation. When `normalize` is
+  nontrivial (e.g., trailing-zero stripping for the TM→GS edge), the decode
+  contract works modulo the equivalence induced by `normalize`.
+
+  Used for the TM→GS edge where the GS source's `[0]` phantom on previously
+  empty tapes is absorbed by `normalize` on the BiTM target side.
+-/
+
+structure SimulationViaDecode (A B : ComputationalMachine) where
+  encode : B.Configuration → A.Configuration
+  decode : A.Configuration → Option B.Configuration
+  /-- Canonicalization on B-configurations. For "no phantom" cases, take
+      `normalize := id`. For cases with redundant representation
+      (e.g., trailing-zero list tapes), `normalize` strips the redundancy. -/
+  normalize : B.Configuration → B.Configuration
+  /-- Roundtrip: encode then decode recovers the normalized form. -/
+  roundtrip : ∀ b, decode (encode b) = some (normalize b)
+  /-- Conjugation: one B-step lifts to some n A-steps reaching `a`, and
+      `a` decodes to the normalized form of `b'`. -/
+  commutes : ∀ b b', B.step b = some b' →
+    ∃ n a, A.iterationStep n (encode b) = some a ∧
+           decode a = some (normalize b')
+  /-- B halting (`step b = none`) implies A halts on encode b. -/
+  halting : ∀ b, B.step b = none → A.Halts (encode b)
+
 end ComputationalMachine

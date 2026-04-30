@@ -1,0 +1,292 @@
+/-
+  Edges — the registered edges of the Universality Graph.
+
+  Every edge is a named Lean `def` whose *single* type signature exposes
+    (a) the source machine,
+    (b) the target machine,
+    (c) every external hypothesis as an explicit `Prop`-valued parameter.
+  Hypotheses (Cocke-Minsky, Smith, well-formedness invariants, halting bridges)
+  appear *only* as parameters, never buried inside fields.
+
+  This file is the single audit point for a human to enumerate every edge
+  claim. `EdgeAudit.lean` walks `edgeRegistry` to print the audit trail.
+
+  Convention (Rule 9 — proposed in Wiki/Concepts/ProofIntegrity.md):
+  - No `sorry` may appear in any `Simulation` / `HaltingSimulation` field of a
+    registered wrapper.
+  - Each registered edge declares one wrapping `def` whose type signature
+    fully exposes machines + hypotheses.
+-/
+
+import Lean
+import ComputationalMachine
+import SimulationEncoding
+import Proofs.TuringMachineToGeneralizedShift
+import Proofs.GeneralizedShiftToTuringMachine
+import Proofs.CockeMinsky
+import Proofs.TagSystemToCyclicTagSystem
+import Proofs.ElementaryCellularAutomatonMirror
+import Proofs.TMtoGS_ViaDecode
+
+namespace UniversalityGraph
+
+/-- Status of an edge's formalization. -/
+inductive EdgeStatus
+  /-- All required preconditions are themselves proved in the project,
+      and the registered `def` is a complete `Simulation`/`HaltingSimulation`. -/
+  | unconditional
+  /-- The registered `def` takes one or more external `Prop` hypotheses as
+      parameters (e.g. Smith's theorem, Cocke-Minsky construction, a halting
+      well-formedness invariant). The hypotheses are listed in `hypotheses`. -/
+  | conditional
+  deriving DecidableEq, Repr
+
+/-- Shape of an edge's claim. -/
+inductive ClaimShape
+  /-- A `ComputationalMachine.Simulation source target` value. -/
+  | simulation
+  /-- A `ComputationalMachine.HaltingSimulation source target` value. -/
+  | haltingSimulation
+  /-- A universality claim (e.g. `IsUniversal wolfram23`). The Lean type is
+      domain-specific; use the metadata to interpret it. -/
+  | universalityClaim
+  /-- A `SimulationViaDecode source target` value: decode-based commutes,
+      with explicit `canon` for canonicalizing the target side. Used for
+      edges where strict-equality `Simulation` is structurally infeasible. -/
+  | simulationViaDecode
+  deriving DecidableEq, Repr
+
+/-- Audit metadata for one registered edge.
+
+    `theoremName` points to the wrapping `def`. `EdgeAudit.lean` looks it up
+    and runs `CollectAxioms.collect`; the closure must contain only standard
+    axioms (and `sorryAx` *only* for entries explicitly marked as carrying
+    open sorries — see `notes`). -/
+structure EdgeMetadata where
+  shortName : String
+  theoremName : Lean.Name
+  sourceDescription : String
+  targetDescription : String
+  paperReference : String
+  status : EdgeStatus
+  claimShape : ClaimShape
+  hypotheses : List String
+  parameters : List String
+  notes : String
+
+/- ============================================================================
+   Edge wrappers
+   ============================================================================ -/
+
+/- ── ECA Mirror (Rule 110 ↔ Rule 124) ── -/
+
+/-- **Rule 110 simulates Rule 124** via tape reversal. Bisimulation σ=1, τ=1.
+    Parametric in tape length; the only precondition is `n ≥ 3`. -/
+def edge_ECA110_ECA124 (n : Nat) (hn : n ≥ 3) :
+    ComputationalMachine.Simulation
+      (ElementaryCellularAutomaton.toComputationalMachine ElementaryCellularAutomaton.rule110 n)
+      (ElementaryCellularAutomaton.toComputationalMachine ElementaryCellularAutomaton.rule124 n) :=
+  ElementaryCellularAutomaton.rule110SimulatesRule124 n hn
+
+/-- **Rule 124 simulates Rule 110** via tape reversal (converse of the above). -/
+def edge_ECA124_ECA110 (n : Nat) (hn : n ≥ 3) :
+    ComputationalMachine.Simulation
+      (ElementaryCellularAutomaton.toComputationalMachine ElementaryCellularAutomaton.rule124 n)
+      (ElementaryCellularAutomaton.toComputationalMachine ElementaryCellularAutomaton.rule110 n) :=
+  ElementaryCellularAutomaton.rule124SimulatesRule110 n hn
+
+/- ── TM → GS edge (decode-based, fully proved) ──
+   The proof and supporting helpers live in `Lean/Proofs/TMtoGS_ViaDecode.lean`;
+   `SimulationViaDecode` lives in `Lean/SimulationEncoding.lean`. -/
+
+/-- **TM → GS edge (via decode-based commutes)**: returns a `SimulationViaDecode`
+    with `encode = encodeBiTM`, `decode = decodeBiTM ∘ normalize`,
+    `normalize = strip trailing zeros from BiTM tapes`. Reads as conjugation
+    `decode ∘ A^n ∘ encode = some ∘ normalize ∘ B.step`. The `[0]`/`[]`
+    representation phantom that arises from a GS step shifting away from a
+    previously-empty tape side is absorbed by `normalize`.
+
+    **Both `commutes` and `halting` fully proved** (see
+    `TMtoGS_ViaDecode.tmToGSSimulationViaDecode` for the proof body).
+    Closure: `[propext, Quot.sound, Classical.choice]`.
+
+    Hypotheses are well-formedness conditions on the machine. -/
+def edge_TMtoGS_viaDecode (machine : TuringMachine.Machine)
+    (hk : machine.numberOfSymbols > 0)
+    (hHeadAll : ∀ c : BiInfiniteTuringMachine.Configuration,
+      c.head < machine.numberOfSymbols)
+    (hWriteBound : ∀ q a, (machine.transition q a).write < machine.numberOfSymbols)
+    (hStateBound : ∀ q a, (machine.transition q a).nextState ≤ machine.numberOfStates) :
+    ComputationalMachine.SimulationViaDecode
+      (GeneralizedShift.toComputationalMachine
+        (TuringMachineToGeneralizedShift.fromBiTM machine))
+      (BiInfiniteTuringMachine.toComputationalMachine machine) :=
+  TMtoGS_ViaDecode.tmToGSSimulationViaDecode machine hk hHeadAll hWriteBound hStateBound
+
+/- ── GS → TM (Moore Theorem 8) ── -/
+
+/-- **GS → TM edge** (Moore 1991, Theorem 8). σ=1, τ ≤ 2(w-1) + maxShift.
+
+    The existing `gsToTMSimulation` in the proof file has two `sorry`s in its
+    `commutes` and `halting` fields. This wrapper rebuilds the `Simulation`
+    cleanly using the existing `gsToTMCommutes` lemma plus an explicit
+    halting hypothesis.
+
+    Open hypotheses:
+    - `hSim`: the step simulation property (provable for w=1; w≥2 is open in
+      `fullSim_general`).
+    - `hLen`: every reachable GS config has cells of length `windowWidth`.
+    - `hShift`: every active window has shift magnitude ≥ 1.
+    - `hHalt`: inactive GS configs encode to halting TM configs. -/
+def edge_GStoTM (params : GeneralizedShiftToTuringMachine.GSParams)
+    (hSim : GeneralizedShiftToTuringMachine.StepSimulation params)
+    (hLen : ∀ gsConfig gsConfig',
+      GeneralizedShift.step (GeneralizedShiftToTuringMachine.gsMachine params) gsConfig
+        = some gsConfig' →
+      gsConfig.cells.length = params.windowWidth)
+    (hShift : ∀ w, params.gsIsActive w = true →
+      (params.gsTransition w).shiftMagnitude ≥ 1)
+    (hHalt : ∀ gsConfig,
+      GeneralizedShift.step (GeneralizedShiftToTuringMachine.gsMachine params) gsConfig = none →
+      ComputationalMachine.Halts
+        (BiInfiniteTuringMachine.toComputationalMachine
+          (GeneralizedShiftToTuringMachine.toBiTM params))
+        (GeneralizedShiftToTuringMachine.encodeConfig gsConfig)) :
+    ComputationalMachine.Simulation
+      (BiInfiniteTuringMachine.toComputationalMachine
+        (GeneralizedShiftToTuringMachine.toBiTM params))
+      (GeneralizedShift.toComputationalMachine
+        (GeneralizedShiftToTuringMachine.gsMachine params)) where
+  encode := GeneralizedShiftToTuringMachine.encodeConfig
+  commutes := fun config config' h =>
+    GeneralizedShiftToTuringMachine.gsToTMCommutes params hSim config config'
+      (hLen config config' h) hShift h
+  halting := hHalt
+
+/- ── Tag → CTS (Cook 2004) ── -/
+
+/-- **Tag → CTS edge** (Cook 2004). 1 tag step = 2k CTS steps.
+
+    The existing `tagToCTSSimulation` in the proof file has a buried `sorry`
+    in its `halting` field (single-element tag words encode to k bits which
+    do not immediately halt CTS). This wrapper hoists the missing case as an
+    explicit hypothesis.
+
+    Open hypothesis:
+    - `hHalt`: when the tag system halts (`step = none`, i.e. word length < 2),
+      the CTS-encoded configuration also halts. The fully-empty case is
+      proved as `cyclicTagSystemHaltsOnEmpty`; the single-element case is the
+      remaining gap (it eventually halts after k CTS steps, not immediately). -/
+def edge_TagtoCTS {k : Nat} (ts : TagSystem.Tag k) (hk : k > 0)
+    (hHalt : ∀ config : TagSystem.TagConfiguration k,
+      ts.step config = none →
+      ComputationalMachine.Halts
+        ((TagSystem.tagToCyclicTagSystem ts hk).toComputationalMachine)
+        (TagSystem.tagConfigurationToCyclicTagSystem k config)) :
+    ComputationalMachine.Simulation
+      ((TagSystem.tagToCyclicTagSystem ts hk).toComputationalMachine)
+      (ts.toComputationalMachine) where
+  encode := TagSystem.tagConfigurationToCyclicTagSystem k
+  commutes := TagSystem.tagToCTSCommutes ts hk
+  halting := hHalt
+
+/- ── Cocke-Minsky chain: any TM → wolfram23 ── -/
+
+/-- **Cocke-Minsky + Cook + Smith chain**: Wolfram's (2,3) TM is universal.
+    Returns `IsUniversal wolfram23` (universality claim, not a single
+    Simulation — the encoding is family-of-machines parametric).
+
+    Open hypotheses (literature theorems):
+    - `h_cm`: Cocke-Minsky 1964 step simulation, for every TM.
+    - `h_smith`: Smith 2007 simulation (CTS → (2,3) TM via 6 intermediate
+      systems). -/
+def edge_CockeMinskyChain
+    (h_cm : ∀ machine, BiInfiniteTuringMachine.CockeMinskyStepSimulation machine)
+    (h_smith : BiInfiniteTuringMachine.SmithSimulation) :
+    BiInfiniteTuringMachine.IsUniversal BiInfiniteTuringMachine.wolfram23 :=
+  BiInfiniteTuringMachine.wolfram23Universal h_cm h_smith
+
+/- ============================================================================
+   Edge registry
+   ============================================================================ -/
+
+/-- The list of all registered edges, in topological-ish order (simpler first). -/
+def edgeRegistry : List EdgeMetadata := [
+  { shortName := "ECA110_ECA124"
+    theoremName := `UniversalityGraph.edge_ECA110_ECA124
+    sourceDescription := "ECA Rule 110 on Fin n → Fin 2"
+    targetDescription := "ECA Rule 124 on Fin n → Fin 2"
+    paperReference := "Folklore (mirror symmetry of ECA rules; cf. Wolfram, NKS p.55)"
+    status := .unconditional
+    claimShape := .simulation
+    hypotheses := []
+    parameters := ["n : Nat", "hn : n ≥ 3"]
+    notes := "Tape reversal bisimulation, σ=1, τ=1." },
+  { shortName := "ECA124_ECA110"
+    theoremName := `UniversalityGraph.edge_ECA124_ECA110
+    sourceDescription := "ECA Rule 124 on Fin n → Fin 2"
+    targetDescription := "ECA Rule 110 on Fin n → Fin 2"
+    paperReference := "Folklore (same as above by involution)"
+    status := .unconditional
+    claimShape := .simulation
+    hypotheses := []
+    parameters := ["n : Nat", "hn : n ≥ 3"]
+    notes := "Tape reversal bisimulation; converse of edge_ECA110_ECA124." },
+  { shortName := "TM_GS_viaDecode"
+    theoremName := `UniversalityGraph.edge_TMtoGS_viaDecode
+    sourceDescription := "Standard GS fromBiTM(machine) (no step modification)"
+    targetDescription := "BiInfiniteTuringMachine machine (decoded modulo trailing-zero canonicalization)"
+    paperReference := "Moore 1991, Theorem 7 — decode-based commutes variant"
+    status := .conditional
+    claimShape := .simulationViaDecode
+    hypotheses := [
+      "_hk : numberOfSymbols > 0",
+      "_hHeadAll : ∀ c, c.head < numberOfSymbols (well-formed configs)",
+      "_hWriteBound : every transition's write < numberOfSymbols",
+      "_hStateBound : every transition's nextState ≤ numberOfStates"
+    ]
+    parameters := ["machine : TuringMachine.Machine"]
+    notes := "Uses SimulationViaDecode (conjugation modulo `normalize`). Encode = encodeBiTM (Moore's exact). Decode = decodeBiTMNormalized (decodeBiTM + normalize tapes). Normalize = normalizeBiTMConfig (strip trailing zeros from BiTM tapes). Roundtrip pinned: `decode (encode b) = some (normalize b)`. Commutes reads as conjugation: `decode a = some (normalize b')`. **Both halting and commutes fully proved (no sorry).** Closure: [propext, Quot.sound, Classical.choice]." },
+  { shortName := "GS_TM"
+    theoremName := `UniversalityGraph.edge_GStoTM
+    sourceDescription := "BiInfiniteTuringMachine toBiTM(params)"
+    targetDescription := "Generalized Shift gsMachine(params)"
+    paperReference := "Moore 1991, Theorem 8"
+    status := .conditional
+    claimShape := .simulation
+    hypotheses := [
+      "hSim : StepSimulation params — w=1 proved, w≥2 open in fullSim_general",
+      "hLen : reachable configs have correct window width",
+      "hShift : active windows have shiftMagnitude ≥ 1",
+      "hHalt : inactive GS configs encode to halting TM configs"
+    ]
+    parameters := ["params : GSParams"]
+    notes := "σ=1 τ ≤ 2(w-1) + maxShift. This wrapper avoids the buried sorry in the proof file's gsToTMSimulation by reconstructing Simulation cleanly." },
+  { shortName := "Tag_CTS"
+    theoremName := `UniversalityGraph.edge_TagtoCTS
+    sourceDescription := "CyclicTagSystem (Cook encoding of ts)"
+    targetDescription := "Tag system ts (alphabet size k)"
+    paperReference := "Cook 2004 (Universality in Elementary Cellular Automata)"
+    status := .conditional
+    claimShape := .simulation
+    hypotheses := [
+      "hHalt : tag-halted configs encode to halting CTS configs (single-element gap)"
+    ]
+    parameters := ["k : Nat", "ts : Tag k", "hk : k > 0"]
+    notes := "1 tag step = 2k CTS steps. The single-element halting case is the only open gap; this wrapper hoists it from the buried sorry in tagToCTSSimulation." },
+  { shortName := "Wolfram23_universal"
+    theoremName := `UniversalityGraph.edge_CockeMinskyChain
+    sourceDescription := "Wolfram's (2,3) Turing Machine"
+    targetDescription := "Every Turing machine (universality claim)"
+    paperReference := "Cocke 1964 + Cook 2004 + Smith 2007 (composed chain)"
+    status := .conditional
+    claimShape := .universalityClaim
+    hypotheses := [
+      "h_cm : Cocke-Minsky step simulation for every TM (1964)",
+      "h_smith : Smith CTS → (2,3) TM simulation (2007)"
+    ]
+    parameters := []
+    notes := "Returns IsUniversal wolfram23. The middle step (Tag → CTS, Cook 2004) is fully proved internally with 0 sorry. Smith's hypothesis is taken as-is per project policy (too complex to formalize)." }
+]
+
+end UniversalityGraph

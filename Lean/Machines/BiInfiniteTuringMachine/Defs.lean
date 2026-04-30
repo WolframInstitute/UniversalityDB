@@ -119,4 +119,49 @@ theorem iterationStep_eq_exactSteps (machine : TuringMachine.Machine) (config : 
     | none => rfl
     | some config' => exact ih config'
 
+-- ============================================================================
+-- Trailing-zero normalization (canonicalize bi-infinite tape representation)
+-- ============================================================================
+
+/-- Strip trailing zeros from a finite tape. Both `[]` and `[0, 0, ...]`
+    represent the same bi-infinite blank tape; we pick `[]` as canonical. -/
+def stripTrailingZeros : List Nat → List Nat
+  | [] => []
+  | x :: xs =>
+    let tail := stripTrailingZeros xs
+    if tail.isEmpty && x == 0 then [] else x :: tail
+
+/-- Canonicalize a configuration by stripping trailing zeros from both tapes. -/
+def stripConfig (config : Configuration) : Configuration :=
+  { config with
+    left  := stripTrailingZeros config.left
+    right := stripTrailingZeros config.right }
+
+/-- Normalized BiTM step: post-strips trailing zeros from both tapes after
+    each step. Lands in canonical form, so simulations against this variant
+    enjoy strict-equality `commutes`. -/
+def stepNormalized (machine : TuringMachine.Machine) (config : Configuration) : Option Configuration :=
+  (step machine config).map stripConfig
+
+def exactStepsNormalized (machine : TuringMachine.Machine) (config : Configuration) : Nat → Option Configuration
+  | 0 => some config
+  | n + 1 =>
+    match stepNormalized machine config with
+    | none => none
+    | some config' => exactStepsNormalized machine config' n
+
+def toComputationalMachineNormalized (machine : TuringMachine.Machine) : ComputationalMachine where
+  Configuration := Configuration
+  step := stepNormalized machine
+
+theorem iterationStep_normalized_eq_exactSteps (machine : TuringMachine.Machine) (config : Configuration) (n : Nat) :
+    (toComputationalMachineNormalized machine).iterationStep n config = exactStepsNormalized machine config n := by
+  induction n generalizing config with
+  | zero => rfl
+  | succ n ih =>
+    simp [ComputationalMachine.iterationStep, toComputationalMachineNormalized, exactStepsNormalized]
+    cases stepNormalized machine config with
+    | none => rfl
+    | some config' => exact ih config'
+
 end BiInfiniteTuringMachine
