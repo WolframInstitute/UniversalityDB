@@ -1314,6 +1314,11 @@ private theorem fullSim_general (params : GSParams)
     -- readScan, biTM_step_lastRead, writeLoop, writeZeroShift, encodeConfig_shiftBy_flatten.
     sorry
 
+-- NOTE: A `[c]`-view variant `fullSim_general_cView` is the right vehicle for
+-- producing a `SimulationEncoding` (with `decodeConfigPadded`) without any
+-- tape-length precondition. The chain proof (~80-150 lines) is deferred to a
+-- dedicated session — see `Wiki/Plans/GStoTM_SimulationEncoding.md`.
+
 -- ============================================================================
 -- General step simulation (all window widths)
 -- ============================================================================

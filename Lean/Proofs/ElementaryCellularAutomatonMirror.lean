@@ -30,7 +30,7 @@ theorem reverseTapeInvolutive (n : Nat) (_hn : n ≥ 1) (tape : Fin n → Fin 2)
   have h2 : n - 1 - (n - 1 - i.val) = i.val := by omega
   simp only [h1, h2, Nat.mod_eq_of_lt hi]
 
-private theorem reverseRightIsLeft (n i : Nat) (hn : n ≥ 3) (hi : i < n) :
+theorem reverseRightIsLeft (n i : Nat) (hn : n ≥ 3) (hi : i < n) :
     (n - 1 - ((i + 1) % n)) % n = ((n - 1 - i) % n + n - 1) % n := by
   have h1 : (n - 1 - i) % n = n - 1 - i := Nat.mod_eq_of_lt (by omega)
   rw [h1]
@@ -45,7 +45,7 @@ private theorem reverseRightIsLeft (n i : Nat) (hn : n ≥ 3) (hi : i < n) :
     rw [show n - 1 + 1 = n from by omega, Nat.mod_self]
     simp [Nat.mod_eq_of_lt (by omega : n - 1 < n)]
 
-private theorem reverseLeftIsRight (n i : Nat) (hn : n ≥ 3) (hi : i < n) :
+theorem reverseLeftIsRight (n i : Nat) (hn : n ≥ 3) (hi : i < n) :
     (n - 1 - ((i + n - 1) % n)) % n = ((n - 1 - i) % n + 1) % n := by
   have h1 : (n - 1 - i) % n = n - 1 - i := Nat.mod_eq_of_lt (by omega)
   rw [h1]

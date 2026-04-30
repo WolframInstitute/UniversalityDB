@@ -40,11 +40,12 @@ Interactive guided walk through the project — say **"start tour"** to begin. T
   - [Cocke-Minsky Chain Skeleton](Proofs/CockeMinskyChain/Skeleton.md) — paper-driven layered DAG
 - [ECA Mirror](Proofs/ECAMirror.md) — Rule 110 ↔ 124 via tape reversal, fully proved
   - [ECA Mirror Skeleton](Proofs/ECAMirror/Skeleton.md) — paper-driven layered DAG (demo of new framework)
+- [ECA Conjugation](Proofs/ECAConjugation.md) — Klein-4 framework: mirror, complement, combined; orbit of Rule 110 = {110, 124, 137, 193}, fully proved
 
 ## Concepts
 
 - [Computational Machine](Concepts/ComputationalMachine.md) — the vertex type (Config + step)
-- [Simulation Encoding](Concepts/SimulationEncoding.md) — the edge type (encode + decode + roundtrip + commutes)
+- [Simulation Encoding](Concepts/SimulationEncoding.md) — three layered structures: `HaltingSimulation`, `Simulation`, `SimulationEncoding` (conjugation form)
 - [Overhead](Concepts/Overhead.md) — spatial and temporal cost of simulation
 - [Pipeline Architecture](Concepts/PipelineArchitecture.md) — LLM pipeline for auto-expanding the graph (future)
 - [Lean Blueprint](Concepts/LeanBlueprint.md) — PFR-style blueprint with `\lean{}` annotations
@@ -54,6 +55,7 @@ Interactive guided walk through the project — say **"start tour"** to begin. T
 
 - [TM ↔ GS](Notebooks/TM_GS.md) — Moore 1991, TM ↔ Generalized Shift demonstration
 - [Cocke-Minsky Chain](Notebooks/CockeMinsky.md) — TM → Tag → CTS → (2,3) TM
+- [ECA Symmetries](Notebooks/ECASymmetries.md) — Klein-4 conjugations of ECA rules (mirror, complement, combined)
 - [Universality Graph](Notebooks/UniversalityGraph.md) — graph exploration and visualization
 - [Cross-Validation](Notebooks/CrossValidation.md) — Lean vs. Wolfram definition validation
 

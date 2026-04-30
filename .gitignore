@@ -29,8 +29,8 @@ Blueprint/print/
 Blueprint/lean_decls
 Blueprint/*.pdf
 
-# Generated notebooks (from Wiki/Notebooks/*.md sources)
-Notebooks/
+# Generated notebooks (from Wiki/Notebooks/*.md sources) — top-level only
+/Notebooks/
 
 # Resources: on-demand local directory for binaries (PDFs, notebooks)
 # Summaries live in Wiki/Resources/. Only submodules are tracked.
