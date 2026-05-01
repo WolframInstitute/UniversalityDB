@@ -21,13 +21,13 @@ leanProjectDir = FileNameJoin[ { NotebookDirectory[], "..", "Lean" } ];
 
 ## 1. Klein-4 Orbit of an ECA Rule
 
-Each ECA rule is a local map `Fin 2 \[Times] Fin 2 \[Times] Fin 2 \[RightArrow] Fin 2`. Wolfram encodes it by listing the outputs for neighbourhoods `111, 110, 101, 100, 011, 010, 001, 000` in that order and reading the resulting 8-bit string as a binary integer. Thus Rule 110 is `01101110`.
+Each ECA rule is a local map `Fin 2 × Fin 2 × Fin 2 → Fin 2`. Wolfram encodes it by listing the outputs for neighbourhoods `111, 110, 101, 100, 011, 010, 001, 000` in that order and reading the resulting 8-bit string as a binary integer. Thus Rule 110 is `01101110`.
 
 The code below accesses the same rule table in the little-endian order used by `BitGet`: bit `4 a + 2 b + c` is the output on neighbourhood `(a, b, c)`, so the bit positions `0, 1, ..., 7` correspond to `000, 001, ..., 111`.
 
-**Mirror** acts by `(a, b, c) \[RightArrow] (c, b, a)`, so it swaps bit positions `1 \[LeftRightArrow] 4` and `3 \[LeftRightArrow] 6`, fixing `0, 2, 5, 7`.
+**Mirror** acts by `(a, b, c) → (c, b, a)`, so it swaps bit positions `1 ↔ 4` and `3 ↔ 6`, fixing `0, 2, 5, 7`.
 
-**Complement** acts by `f( a, b, c ) \[RightArrow] 1 - f( 1 - a, 1 - b, 1 - c )`, so bit `i` becomes `1 - (bit (7 - i) of original)`.
+**Complement** acts by `f( a, b, c ) → 1 - f( 1 - a, 1 - b, 1 - c )`, so bit `i` becomes `1 - (bit (7 - i) of original)`.
 
 ```wolfram
 neighborhoodIndex[ a_, b_, c_ ] := 4 a + 2 b + c
@@ -102,7 +102,7 @@ plotEvolution[ rule_Integer, label_String ] :=
 ```wolfram
 Grid @ {
   { plotEvolution[ 110, "original" ], plotEvolution[ 124, "mirror" ] },
-  { plotEvolution[ 137, "complement" ], plotEvolution[ 193, "mirror \[CenterDot] complement" ] }
+  { plotEvolution[ 137, "complement" ], plotEvolution[ 193, "mirror · complement" ] }
 }
 ```
 
@@ -130,7 +130,7 @@ And @@ Table[
   { k, 1, nSteps } ]
 ```
 
-**Mirror \[CenterDot] Complement** — `step rule110 (reverse \[CenterDot] complement tape) = reverse \[CenterDot] complement (step rule193 tape)`:
+**Mirror · Complement** — `step rule110 (reverse · complement tape) = reverse · complement (step rule193 tape)`:
 
 ```wolfram
 And @@ Table[
@@ -142,7 +142,32 @@ All three should return `True`.
 
 ## 4. Lean Verification
 
-> A successful `LeanImportString` means Lean's kernel has accepted every definition and proof in the file. The Klein-group file is now rule-parametric for both mirror and complement: the specific Rule 110 orbit edges are specializations of generic conjugation theorems plus `decide`-checkable rule identifications.
+The point of this section is not just that Lean accepts the file, but that you can inspect the exact claims being proved.
+
+- The machine definitions live in `Lean/Machines/ElementaryCellularAutomaton/Defs.lean`.
+- The conjugation proofs live in `Lean/Proofs/ElementaryCellularAutomatonKleinGroup.lean`.
+- The specific edge wrappers live in `Lean/Edges.lean`.
+
+A successful `LeanImportString` means Lean's kernel has accepted every definition and proof in the imported file. The next cells expose the exact statements, so you can check that there are no hidden hypotheses.
+
+### Machine definitions
+
+The ECA rules are defined literally by their Wolfram numbers:
+
+```wolfram
+ecaDefsSource = Import[ FileNameJoin[ { leanProjectDir, "Machines", "ElementaryCellularAutomaton", "Defs.lean" } ], "Text" ];
+
+First @ StringCases[
+  ecaDefsSource,
+  Shortest[
+    "def ruleTable" ~~ __ ~~
+    "def rule110 : Fin 2 → Fin 2 → Fin 2 → Fin 2 := ruleTable 110\n" ~~
+    "def rule124 : Fin 2 → Fin 2 → Fin 2 → Fin 2 := ruleTable 124\n" ~~
+    "def rule137 : Fin 2 → Fin 2 → Fin 2 → Fin 2 := ruleTable 137\n" ~~
+    "def rule193 : Fin 2 → Fin 2 → Fin 2 → Fin 2 := ruleTable 193"
+  ]
+]
+```
 
 ### Klein-group framework (mirror, complement, combined)
 
@@ -150,6 +175,8 @@ All three should return `True`.
 envKlein = LeanImportString[ Import[ FileNameJoin[ { leanProjectDir, "Proofs", "ElementaryCellularAutomatonKleinGroup.lean" } ], "Text" ], "ProjectDir" -> leanProjectDir ];
 Length[ Keys[ envKlein ] ]
 ```
+
+The generic, rule-parametric statements:
 
 ```wolfram
 envKlein[ "TypeOf", "ElementaryCellularAutomaton.mirrorRuleSimulatesRule" ][ "TypeForm" ]
@@ -159,8 +186,6 @@ envKlein[ "TypeOf", "ElementaryCellularAutomaton.mirrorRuleSimulatesRule" ][ "Ty
 envKlein[ "TypeOf", "ElementaryCellularAutomaton.ruleSimulatesMirrorRule" ][ "TypeForm" ]
 ```
 
-The generic, rule-parametric theorems:
-
 ```wolfram
 envKlein[ "TypeOf", "ElementaryCellularAutomaton.complementSimulationGeneral" ][ "TypeForm" ]
 ```
@@ -169,7 +194,11 @@ envKlein[ "TypeOf", "ElementaryCellularAutomaton.complementSimulationGeneral" ][
 envKlein[ "TypeOf", "ElementaryCellularAutomaton.mirrorSimulationGenericGeneral" ][ "TypeForm" ]
 ```
 
-The specific Rule 110 orbit identifications (each is a `decide` over 8 neighbourhoods):
+```wolfram
+envKlein[ "TypeOf", "ElementaryCellularAutomaton.mirrorComplementSimulation" ][ "TypeForm" ]
+```
+
+The specific Rule 110 orbit identifications are finite equalities of local rules. Each is proved by `decide` over the eight neighbourhoods:
 
 ```wolfram
 envKlein[ "TypeOf", "ElementaryCellularAutomaton.mirrorRule_rule110" ][ "TypeForm" ]
@@ -183,14 +212,34 @@ envKlein[ "TypeOf", "ElementaryCellularAutomaton.complementRule_rule110" ][ "Typ
 envKlein[ "TypeOf", "ElementaryCellularAutomaton.mirrorRule_rule137" ][ "TypeForm" ]
 ```
 
-The two new edges:
+### Exact edge statements
+
+These are the actual no-hypothesis simulation theorems for the Rule 110 orbit edges:
 
 ```wolfram
-envConj[ "TypeOf", "ElementaryCellularAutomaton.rule110SimulatesRule137" ][ "TypeForm" ]
+envKlein[ "TypeOf", "ElementaryCellularAutomaton.rule110SimulatesRule124" ][ "TypeForm" ]
 ```
 
 ```wolfram
-envConj[ "TypeOf", "ElementaryCellularAutomaton.rule110SimulatesRule193" ][ "TypeForm" ]
+envKlein[ "TypeOf", "ElementaryCellularAutomaton.rule124SimulatesRule110" ][ "TypeForm" ]
 ```
 
-**Status.** All six conjugation edges (`110 \[LeftRightArrow] 124`, `110 \[LeftRightArrow] 137`, `110 \[LeftRightArrow] 193`) fully proved, axiom closure `[propext, Quot.sound]`, 0 sorry. Universality of Rule 110 (Cook 2004) therefore propagates to Rules 124, 137, 193.
+```wolfram
+envKlein[ "TypeOf", "ElementaryCellularAutomaton.rule110SimulatesRule137" ][ "TypeForm" ]
+```
+
+```wolfram
+envKlein[ "TypeOf", "ElementaryCellularAutomaton.rule137SimulatesRule110" ][ "TypeForm" ]
+```
+
+```wolfram
+envKlein[ "TypeOf", "ElementaryCellularAutomaton.rule110SimulatesRule193" ][ "TypeForm" ]
+```
+
+```wolfram
+envKlein[ "TypeOf", "ElementaryCellularAutomaton.rule193SimulatesRule110" ][ "TypeForm" ]
+```
+
+Each of these types is hypothesis-free except for the tape-size side condition `n \[GreaterEqual] 3`, which is mathematically necessary for left and right neighbours to be distinct on the cyclic tape.
+
+**Status.** All six conjugation edges (`110 \[LeftRightArrow] 124`, `110 \[LeftRightArrow] 137`, `110 \[LeftRightArrow] 193`) are fully proved, with axiom closure `[propext, Quot.sound]` and 0 `sorry`. Universality of Rule 110 therefore propagates immediately to Rules 124, 137, and 193.
