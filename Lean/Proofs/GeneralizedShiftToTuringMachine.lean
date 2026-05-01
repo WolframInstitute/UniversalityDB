@@ -258,7 +258,7 @@ def getListElem (list : List Nat) (idx : Nat) : Nat :=
 -- Phase transition function (clean, proof-friendly)
 -- ============================================================================
 
-private def startShiftPhase (params : GSParams) (repl : Nat)
+private def startShiftPhase (_params : GSParams) (repl : Nat)
     (rule : GeneralizedShift.ShiftRule) : TMPhase × Nat × Direction :=
   if rule.shiftMagnitude = 0 then
     (.start, repl, Direction.R)
@@ -425,7 +425,7 @@ private theorem succ_mul_eq (a b : Nat) : (a + 1) * b = a * b + b := by
   rw [Nat.add_mul, Nat.one_mul]
 
 private theorem mul_nPow_lt (pos : Nat) (code : Nat) (w : Nat) (nw : Nat)
-    (hPos : pos < w) (hCode : code < nw) (hnw : nw ≥ 1) :
+  (hPos : pos < w) (hCode : code < nw) (_hnw : nw ≥ 1) :
     pos * nw + code < w * nw := by
   have h1 : pos * nw + code < pos * nw + nw := by omega
   have h2 : pos * nw + nw = (pos + 1) * nw := (succ_mul_eq pos nw).symm
@@ -814,7 +814,7 @@ private theorem encodeConfig_shiftBy_right :
     encodeConfig (shiftBy { left := left, cells := [c], right := cs ++ right } mag false)
   | 0, left, c, cs, right, _ => encodeConfig_flatten left c cs right
   | mag + 1, left, c, cs, right, hLen => by
-    unfold shiftBy; simp only [ite_false, ite_true, Bool.false_eq_true]
+    unfold shiftBy; simp only [ite_false, Bool.false_eq_true]
     cases cs with
     | nil =>
       cases right with
@@ -918,7 +918,7 @@ private theorem biTM_step_start_w2 (params : GSParams) (hWidth : params.windowWi
     show ¬(params.windowWidth ≤ 1) from by omega, ite_false, phaseToNat, readHead]
 
 /-- One intermediate read step: reads c, writes c back, moves R. -/
-private theorem biTM_step_readMid (params : GSParams) (hAlpha : params.alphabetSize ≥ 1)
+private theorem biTM_step_readMid (params : GSParams) (_hAlpha : params.alphabetSize ≥ 1)
     (pos : Nat) (code c r : Nat) (left right : List Nat)
     (hPos : pos < params.windowWidth) (hNotLast : ¬(pos + 1 ≥ params.windowWidth))
     (hCode : code < nPow params.alphabetSize params.windowWidth) :
@@ -1015,7 +1015,7 @@ private theorem readScan (params : GSParams) (hAlpha : params.alphabetSize ≥ 1
            head := last, right := right } := by
   cases cs with
   | nil =>
-    simp only [List.length_nil, Nat.add_zero, List.nil_append, List.reverse_nil, List.nil_append]
+    simp only [List.length_nil, List.nil_append, List.reverse_nil, List.nil_append]
     rw [show (0 + 1 : Nat) = 0 + 1 from rfl,
         exactSteps_succ _ _ _ _ (biTM_step_start_w2 params hWidth left c₀ last right)]
     simp [BiInfiniteTuringMachine.exactSteps, encodeWindow_cons, encodeWindow_nil, nPow]
@@ -1052,7 +1052,7 @@ private theorem readScan (params : GSParams) (hAlpha : params.alphabetSize ≥ 1
 -- ============================================================================
 
 /-- One intermediate write step: writes replacement[pos], moves L. -/
-private theorem biTM_step_writeMid (params : GSParams) (hAlpha : params.alphabetSize ≥ 1)
+private theorem biTM_step_writeMid (params : GSParams) (_hAlpha : params.alphabetSize ≥ 1)
     (pos : Nat) (code : Nat) (head l : Nat) (left right : List Nat)
     (hPos : pos < params.windowWidth) (hPos1 : pos ≥ 1)
     (hCode : code < nPow params.alphabetSize params.windowWidth) :
@@ -1125,7 +1125,7 @@ private theorem getLastD_cons (a : Nat) (l : List Nat) (d : Nat) :
     (a :: l).getLastD d = l.getLastD a := by
   cases l with
   | nil => rfl
-  | cons b bs => simp [List.getLastD, List.getLast?]
+  | cons b bs => simp [List.getLastD]
 
 private theorem replAsc_succ_append (repl : List Nat) (k : Nat) (right : List Nat) :
     replAsc repl (k + 1) ++ right = replAsc repl k ++ (getListElem repl (k + 1) :: right) := by
@@ -1191,12 +1191,12 @@ private theorem writeLoop (params : GSParams) (hAlpha : params.alphabetSize ≥ 
 
 /-- From writeState(0, fullCode), mag steps reach the shift target.
     Writes r₀ via startShiftPhase, then shifts. -/
-private theorem writeZeroShift (params : GSParams) (hAlpha : params.alphabetSize ≥ 1)
+private theorem writeZeroShift (params : GSParams) (_hAlpha : params.alphabetSize ≥ 1)
     (hWidth : params.windowWidth ≥ 2)
     (fullCode : Nat) (hCode : fullCode < nPow params.alphabetSize params.windowWidth)
     (cells : List Nat)
     (hDecode : decodeWindow params.alphabetSize params.windowWidth fullCode = cells)
-    (hActive : params.gsIsActive cells = true)
+  (_hActive : params.gsIsActive cells = true)
     (r₀ : Nat)
     (hR₀ : getListElem (params.gsTransition cells).replacement 0 = r₀)
     (hMag : (params.gsTransition cells).shiftMagnitude ≥ 1)
@@ -1222,7 +1222,7 @@ private theorem writeZeroShift (params : GSParams) (hAlpha : params.alphabetSize
                  head := (readHead right).1, right := (readHead right).2 } := by
         simp [BiInfiniteTuringMachine.step, toBiTM, hW0ne,
           buildTransition_writeState params 0 fullCode head (by omega) hCode,
-          phaseTransition, hDecode, startShiftPhase, hne0, hM1, hDir, phaseToNat, hR₀, readHead]
+          phaseTransition, hDecode, startShiftPhase, hM1, hDir, phaseToNat, hR₀, readHead]
       rw [exactSteps_succ _ _ _ _ hStep]; simp [BiInfiniteTuringMachine.exactSteps]
       cases right <;> simp [readHead, shiftBy, GeneralizedShift.shiftRightOne, encodeConfig]
     · -- mag ≥ 2, R
@@ -1248,7 +1248,7 @@ private theorem writeZeroShift (params : GSParams) (hAlpha : params.alphabetSize
                  head := (readHead left).1, right := r₀ :: right } := by
         simp [BiInfiniteTuringMachine.step, toBiTM, hW0ne,
           buildTransition_writeState params 0 fullCode head (by omega) hCode,
-          phaseTransition, hDecode, startShiftPhase, hne0, hM1, hDir, phaseToNat, hR₀, readHead]
+          phaseTransition, hDecode, startShiftPhase, hM1, hDir, phaseToNat, hR₀, readHead]
       rw [exactSteps_succ _ _ _ _ hStep]; simp [BiInfiniteTuringMachine.exactSteps]
       cases left <;> simp [readHead, shiftBy, GeneralizedShift.shiftLeftOne, encodeConfig]
     · -- mag ≥ 2, L
