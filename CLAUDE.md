@@ -121,17 +121,47 @@ Scripts/publish_notebooks.wls    # upload to Wolfram Cloud
 leanblueprint web
 ```
 
-Add the Wolfram Cloud link to `README.md`.
+Update the Wolfram Cloud link in the Notebooks table in `README.md`.
 
 ## Conventions
+
+### README
+
+`README.md` is the public face of the repo — keep it short, scannable, and accurate.
+
+**Structure rules:**
+- Intro: Keep the user written intro.
+- Ingredients table: one row per tool/ingredient. No prose around it.
+- Each section (Notebooks, Edges, Verification, Build, Contributing) fits in one screen of content.
+- No inline prose inside table cells — use a short label and link to the wiki article instead.
+- No emoji in section headings.
+
+**Tables to maintain:**
+- `## Notebooks` — one row per notebook: name, wiki source link, Wolfram Cloud link (or `—`).
+- `## Verified Simulation Edges` — one row per edge: short name, overhead (σ, τ), template, reference (author + year), number of `sorry`s (`Unproved` column).
+
+**When to update README:**
+- New notebook added → add one row to the Notebooks table.
+- New edge verified → add one row to the Edges table.
+- Overhead or sorry count changes → update that cell only.
+- Do not add new sections or expand prose without human approval.
+
+**What does NOT go in README:**
+- Proof details, encoding descriptions, or theorem statements — those belong in the wiki and blueprint.
+- The local `Notebooks/*.nb` path (gitignored; dead link on GitHub).
+- Build commands beyond the minimal four-line block.
 
 ### Notebooks
 
 Notebook sources live in `Wiki/Notebooks/*.md` (tracked in git). The `.nb` files are generated into `Notebooks/` (gitignored) via `Scripts/generate_notebooks.wls`, which also **evaluates** each notebook locally so output cells (Lean type signatures, plots, etc.) are cached. After evaluation, inspect `Notebooks/*.nb` locally — then upload to Wolfram Cloud via `Scripts/publish_notebooks.wls`, which only uploads (no re-evaluation).
 
-**README.md lists all notebooks** with three links each: the wiki `.md` source, the local `.nb` path, and the Wolfram Cloud URL (if published).
+When creating a new notebook: write `Wiki/Notebooks/Name.md`, add it to `Wiki/Index.md` under Notebooks, and add one row to the Notebooks table in `README.md`.
 
-When creating a new notebook: write `Wiki/Notebooks/Name.md`, add it to `Wiki/Index.md` under Notebooks, and add it to `README.md`.
+**Writing style:**
+- Keep notebook and wiki prose concise.
+- Link definitions, papers, and related notes instead of re-explaining everything inline.
+- Do not assume the reader already knows the project's definitions; give a short reminder when a term first appears.
+- Write for mathematicians or similarly technical readers: precise, compact, and not introductory.
 
 ### Resources
 

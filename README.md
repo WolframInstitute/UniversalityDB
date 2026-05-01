@@ -16,59 +16,50 @@ The generated data is organized as a **universality graph**: vertices are comput
 
 | Notebook | Source | Wolfram Cloud |
 |---|---|---|
-| TM ↔ Generalized Shift (Moore 1991) | [Wiki/Notebooks/TM_GS.md](Wiki/Notebooks/TM_GS.md) | [Wolfram Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/TM_GS.nb) |
-| Cocke–Minsky Chain (TM → Tag → CTS → (2,3) TM) | [Wiki/Notebooks/CockeMinsky.md](Wiki/Notebooks/CockeMinsky.md) | [Wolfram Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/CockeMinsky.nb) |
-| ECA Klein-4 Symmetries (Mirror, Complement, Combined) | [Wiki/Notebooks/ECASymmetries.md](Wiki/Notebooks/ECASymmetries.md) | [Wolfram Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/ECASymmetries.nb) |
-| The Universality Graph | [Wiki/Notebooks/UniversalityGraph.md](Wiki/Notebooks/UniversalityGraph.md) | [Wolfram Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/UniversalityGraph.nb) |
-| Cross-Validation (Lean vs. Wolfram) | [Wiki/Notebooks/CrossValidation.md](Wiki/Notebooks/CrossValidation.md) | — |
+| ECA Klein-4 Symmetries | [Wiki](Wiki/Notebooks/ECASymmetries.md) | [Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/ECASymmetries.nb) |
+| TM ↔ Generalized Shift (Moore 1991) | [Wiki](Wiki/Notebooks/TM_GS.md) | [Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/TM_GS.nb) |
+| Cocke–Minsky Chain (TM → Tag → CTS → (2,3) TM) | [Wiki](Wiki/Notebooks/CockeMinsky.md) | [Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/CockeMinsky.nb) |
+| The Universality Graph | [Wiki](Wiki/Notebooks/UniversalityGraph.md) | [Cloud](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/UniversalityGraph.nb) |
+| Cross-Validation (Lean vs. Wolfram) | [Wiki](Wiki/Notebooks/CrossValidation.md) | — |
 
-## 📖 Wiki
+## Verified Simulation Edges
 
-Browse the **[knowledge base](Wiki/Index.md)** for articles on every system, proof, and resource in the project.
+Edges use one of three templates from [`Lean/SimulationEncoding.lean`](Lean/SimulationEncoding.lean):
 
-## ✅ Lean-Verified Simulation Edges
+- `HaltingSimulation` — halting preservation only
+- `Simulation` — encode + step correspondence + halting; composable
+- `SimulationEncoding` — conjugation form `step_B(b) = decode(step_A^n(encode b))`
 
-Three layered simulation templates in [`Lean/SimulationEncoding.lean`](Lean/SimulationEncoding.lean): `HaltingSimulation` (halting only), `Simulation` (encode + step correspondence + halting; composable, used by most edges), `SimulationEncoding` (conjugation form `step_B(b) = decode (step_A^n (encode b))`; for edges with a natural decode). The type checker guarantees correctness of each simulation statement.
-
-| Edge | Overhead | Template | Reference | Sorry |
+| Edge | Overhead | Template | Reference | Unproved |
 |---|---|---|---|---|
-| TM → Generalized Shift | σ=1, τ=1 | `SimulationEncoding` | Moore 1991, Thm 7 | 0 |
-| Generalized Shift → TM | σ=1, τ≤2(w−1)+m | `Simulation` | Moore 1991, Thm 8 | 1 (w≥2 composition) |
-| 2-Tag → Cyclic Tag System | σ=k (one-hot), τ=2k | `Simulation` | Cook 2004 | 1 (halting for |word|=1) |
-| ECA Rule 110 ↔ Rule 124 | σ=1, τ=1 | `Simulation` | Tape reversal | 0 |
+| ECA Rule 110 ↔ 124, 137, 193 | σ=1, τ=1 | `Simulation` | Folklore | 0 |
+| TM → Generalized Shift | σ=1, τ=1 | `SimulationEncoding` | Moore 1991 | 0 |
+| Generalized Shift → TM | σ=1, τ≤2(w−1)+m | `SimulationEncoding` | Moore 1991 | 0 |
+| 2-Tag → Cyclic Tag System | σ=k, τ=2k | `Simulation` | Cook 2004 | 1 |
 
-### Proved modulo explicit hypotheses
-
-| Theorem | Template | Hypotheses | Reference |
-|---|---|---|---|
-| Wolfram's (2,3) TM is universal | `IsUniversal` (uses `HaltingSimulation`) | `CockeMinskyStepSimulation` (every TM), `SmithSimulation` | Cocke-Minsky 1964 + Cook 2004 + Smith 2007 |
+Wolfram's (2,3) TM is universal ([`IsUniversal`](Lean/Proofs/CockeMinsky.lean)) modulo two stated hypotheses: `CockeMinskyStepSimulation` (every TM simulates via the Cocke–Minsky chain) and `SmithSimulation` (Smith 2007).
 
 ## Verification
 
-How to verify that LLM-generated proofs in this repository are trustworthy:
-
 ```bash
-Scripts/verify_integrity.sh    # CollectAxioms on key theorems + leanchecker kernel replay
+Scripts/verify_integrity.sh    # axiom audit (CollectAxioms) + kernel replay (leanchecker)
 ```
 
-The full trust model is documented in [Wiki/Concepts/ProofIntegrity.md](Wiki/Concepts/ProofIntegrity.md). In short: `Integrity.lean` uses Lean's `CollectAxioms` API to verify that every key theorem depends only on Lean's three standard axioms. `leanchecker` replays all declarations through the kernel independently. No grep or string parsing — all verification uses Lean's own tools.
+Trust model: [Wiki/Concepts/ProofIntegrity.md](Wiki/Concepts/ProofIntegrity.md)
 
-## 🔨 Build Instructions
+## Build
 
 ```bash
-git clone --recurse-submodules <url>   # clone with LeanLink and TuringMachine submodules
-cd Lean && lake build                  # build Lean project
-Scripts/generate_notebooks.wls         # Wiki/Notebooks/*.md → Notebooks/*.nb
-Scripts/recover_resources.sh           # rebuild Resources/ from Wiki/Resources/*.md
-leanblueprint web                      # build interactive Blueprint
+git clone --recurse-submodules <url>
+cd Lean && lake build
+Scripts/generate_notebooks.wls    # Wiki/Notebooks/*.md → Notebooks/*.nb
+leanblueprint web                 # interactive Blueprint
 ```
 
-## 🤝 Contributing
+## Contributing
 
-We want to maximally utilize LLMs for keeping structure and writing proofs with only high-level human interaction. The full workflow is described in [CLAUDE.md](CLAUDE.md).
+Workflow: [CLAUDE.md](CLAUDE.md) · Next steps: [Wiki/Plans/ActionItems.md](Wiki/Plans/ActionItems.md)
 
-See the [action items](Wiki/Plans/ActionItems.md) for next steps.
-
-## 📄 License
+## License
 
 MIT

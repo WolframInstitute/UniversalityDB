@@ -40,9 +40,9 @@ deferred — paper-and-pencil-clear, tedious case analysis (cells × right tape
 | TM → GS (Moore Thm 7) | `Lean/Proofs/TMtoGS.lean` | `SimulationEncoding` (conjugation) | σ=1, τ=1 | 0 (4 well-formedness hypotheses) |
 | GS → TM (Moore Thm 8) | `Lean/Proofs/GeneralizedShiftToTuringMachine.lean` | `SimulationEncoding` (conjugation) | σ=1, τ≤2(w-1)+m | 0 (7 well-formedness hypotheses) |
 | Tag → CyclicTag (Cook 2004) | `Lean/Proofs/TagSystemToCyclicTagSystem.lean` | `Simulation` | 1 tag step = 2k CTS steps | 1 (halting for single-element tag words) |
-| ECA Rule 110 ↔ Rule 124 | `Lean/Proofs/ElementaryCellularAutomatonMirror.lean` | `Simulation` | σ=1, τ=1 | 0 |
-| ECA Rule 110 ↔ Rule 137 (complement) | `Lean/Proofs/ElementaryCellularAutomatonConjugation.lean` | `Simulation` | σ=1, τ=1 | 0 |
-| ECA Rule 110 ↔ Rule 193 (mirror ∘ complement) | `Lean/Proofs/ElementaryCellularAutomatonConjugation.lean` | `Simulation` | σ=1, τ=1 | 0 |
+| ECA Rule 110 ↔ Rule 124 | `Lean/Proofs/ElementaryCellularAutomatonKleinGroup.lean` | `Simulation` | σ=1, τ=1 | 0 |
+| ECA Rule 110 ↔ Rule 137 (complement) | `Lean/Proofs/ElementaryCellularAutomatonKleinGroup.lean` | `Simulation` | σ=1, τ=1 | 0 |
+| ECA Rule 110 ↔ Rule 193 (mirror ∘ complement) | `Lean/Proofs/ElementaryCellularAutomatonKleinGroup.lean` | `Simulation` | σ=1, τ=1 | 0 |
 
 ## Hypothetical edges (stated as hypotheses)
 

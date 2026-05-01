@@ -8,10 +8,11 @@ A bisimulation between elementary cellular automata Rule 110 and Rule 124 via ta
 
 ## Lean formalization
 
-`Lean/Proofs/ElementaryCellularAutomatonMirror.lean`
+`Lean/Proofs/ElementaryCellularAutomatonKleinGroup.lean`
 
 Key theorems:
 - `mirrorProperty` — pointwise rule identity
+- `mirrorRuleSimulatesRule`, `ruleSimulatesMirrorRule` — generic mirror bisimulations
 - `reverseTapeInvolutive` — double reversal = identity
 - `mirrorSimulationGeneral` — one step commutes with reversal
 - `mirrorSimulationSteps` — k steps commute with reversal
@@ -20,6 +21,6 @@ Key theorems:
 
 ## See also
 
-- [ECAConjugation](ECAConjugation.md) — Klein-4 framework generalising this proof to complement and combined symmetries
+- [ECAConjugation](ECAConjugation.md) — same Klein-group file, viewed as the full symmetry framework
 - [ElementaryCellularAutomaton](../Systems/ElementaryCellularAutomaton.md) — the system family
 - [Cook2004](../Resources/Cook2004.md) — Rule 110 universality

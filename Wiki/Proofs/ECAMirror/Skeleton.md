@@ -1,6 +1,6 @@
 # ECA Rule 110 ↔ Rule 124 — Proof Skeleton
 
-This is a *demonstration* skeleton showing the new layered format described in [VerificationFramework](../../Plans/VerificationFramework.md). The actual content is folklore (mirror symmetry of ECA rules; cf. Wolfram, NKS p.55) and the proof is short, so the skeleton is correspondingly small. Paper-based proofs (Moore 1991, Cook 2004, Cocke-Minsky 1964) will produce richer skeletons.
+This is a *demonstration* skeleton showing the new layered format described in [VerificationFramework](../../Plans/VerificationFramework.md). The actual content is folklore (mirror symmetry of ECA rules; cf. Wolfram, [*A New Kind of Science*, Chapter 3](https://www.wolframscience.com/nks/chap-3--the-world-of-simple-programs/), p. 55) and the proof is short, so the skeleton is correspondingly small. Paper-based proofs (Moore 1991, Cook 2004, Cocke-Minsky 1964) will produce richer skeletons.
 
 ## Edge claim
 
@@ -53,7 +53,7 @@ Folklore. The single observation is: for all `a,b,c ∈ {0,1}`,
 
 **Statement.** ∀ `a, b, c : Fin 2`, `rule110 a b c = rule124 c b a`.
 **Source.** Direct check on 8 inputs.
-**Lean.** `ElementaryCellularAutomaton.mirrorProperty` ([source](../../../Lean/Proofs/ElementaryCellularAutomatonMirror.lean#L15-L17)).
+**Lean.** `ElementaryCellularAutomaton.mirrorProperty` ([source](../../../Lean/Proofs/ElementaryCellularAutomatonKleinGroup.lean#L179-L181)).
 **Status.** Proved (`decide` on a finite Boolean table).
 **Basic notions.** Pointwise rule identity.
 

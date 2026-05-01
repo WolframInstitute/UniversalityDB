@@ -8,7 +8,7 @@ The 256 elementary cellular automata are organized by a Klein-4 group of trivial
 
 Each is involutive and they commute, so the orbit of any rule has at most four elements. For Rule 110 the orbit is `{110, 124, 137, 193}`. The two generators give six edges in the universality graph; this notebook proves and visualises all of them as bisimulations with σ = 1, τ = 1.
 
-Reference: Wolfram, *A New Kind of Science* (2002), §3.1, p. 55 (rule equivalences).
+Reference: Wolfram, [*A New Kind of Science*, Chapter 3](https://www.wolframscience.com/nks/chap-3--the-world-of-simple-programs/) (2002), §3.1, p. 55 (rule equivalences).
 
 ## Setup
 
@@ -21,14 +21,21 @@ leanProjectDir = FileNameJoin[ { NotebookDirectory[], "..", "Lean" } ];
 
 ## 1. Klein-4 Orbit of an ECA Rule
 
-Each ECA rule is a function `Fin 2 \[Times] Fin 2 \[Times] Fin 2 \[RightArrow] Fin 2`, encoded by an 8-bit Wolfram rule number. The bit at position `4 a + 2 b + c` records the output for neighbourhood `(a, b, c)`.
+Each ECA rule is a local map `Fin 2 \[Times] Fin 2 \[Times] Fin 2 \[RightArrow] Fin 2`. Wolfram encodes it by listing the outputs for neighbourhoods `111, 110, 101, 100, 011, 010, 001, 000` in that order and reading the resulting 8-bit string as a binary integer. Thus Rule 110 is `01101110`.
 
-**Mirror** swaps the position bits at indices `abc` and `cba` (positions 1↔4, 3↔6, fixed at 0, 2, 5, 7).
+The code below accesses the same rule table in the little-endian order used by `BitGet`: bit `4 a + 2 b + c` is the output on neighbourhood `(a, b, c)`, so the bit positions `0, 1, ..., 7` correspond to `000, 001, ..., 111`.
 
-**Complement** flips all bits and reverses index order: bit `i` of the new rule is `1 - (bit (7 - i) of original)`.
+**Mirror** acts by `(a, b, c) \[RightArrow] (c, b, a)`, so it swaps bit positions `1 \[LeftRightArrow] 4` and `3 \[LeftRightArrow] 6`, fixing `0, 2, 5, 7`.
+
+**Complement** acts by `f( a, b, c ) \[RightArrow] 1 - f( 1 - a, 1 - b, 1 - c )`, so bit `i` becomes `1 - (bit (7 - i) of original)`.
 
 ```wolfram
 neighborhoodIndex[ a_, b_, c_ ] := 4 a + 2 b + c
+
+wolframNeighborhoods = Tuples[ { 1, 0 }, 3 ];
+
+wolframRuleTable[ ruleNumber_Integer ] :=
+  BitGet[ ruleNumber, neighborhoodIndex @@@ wolframNeighborhoods ]
 
 mirrorRule[ ruleNumber_Integer ] :=
   Sum[ BitGet[ ruleNumber, neighborhoodIndex[ c, b, a ] ] * 2^neighborhoodIndex[ a, b, c ], { a, 0, 1 }, { b, 0, 1 }, { c, 0, 1 } ]
@@ -46,18 +53,31 @@ orbit[ 110 ]
 
 Expected: `{110, 124, 137, 193}`.
 
+```wolfram
+Row[ { "Rule 110 in Wolfram order: ", wolframRuleTable[ 110 ] } ]
+```
+
+Expected: `{0, 1, 1, 0, 1, 1, 1, 0}`, corresponding to `111, 110, 101, 100, 011, 010, 001, 000`.
+
 ## 2. Rule Tables Side by Side
 
 ```wolfram
-ruleTable[ ruleNumber_Integer ] :=
+littleEndianRuleTable[ ruleNumber_Integer ] :=
   Table[ BitGet[ ruleNumber, i ], { i, 0, 7 } ]
 ```
 
-Each row gives the rule's outputs for neighbourhoods `000, 001, 010, ..., 111` (in that order).
+We display the rule tables in Wolfram's `111, 110, ..., 000` order. The little-endian `000, 001, ..., 111` order remains useful for bit manipulations.
 
 ```wolfram
 TableForm[
-  Table[ ruleTable[ r ], { r, orbit[ 110 ] } ],
+  Table[ wolframRuleTable[ r ], { r, orbit[ 110 ] } ],
+  TableHeadings -> { orbit[ 110 ], Row /@ wolframNeighborhoods }
+]
+```
+
+```wolfram
+TableForm[
+  Table[ littleEndianRuleTable[ r ], { r, orbit[ 110 ] } ],
   TableHeadings -> { orbit[ 110 ], Table[ Row @ IntegerDigits[ i, 2, 3 ], { i, 0, 7 } ] }
 ]
 ```
@@ -122,48 +142,45 @@ All three should return `True`.
 
 ## 4. Lean Verification
 
-> A successful `LeanImportString` means Lean's kernel has accepted every definition and proof in the file. The conjugation file is rule-parametric: the specific edges `rule110 \[LeftRightArrow] rule137` and `rule110 \[LeftRightArrow] rule193` follow from generic theorems plus `decide`-checkable rule identifications.
+> A successful `LeanImportString` means Lean's kernel has accepted every definition and proof in the file. The Klein-group file is now rule-parametric for both mirror and complement: the specific Rule 110 orbit edges are specializations of generic conjugation theorems plus `decide`-checkable rule identifications.
 
-### Mirror (Rule 110 \[LeftRightArrow] Rule 124)
+### Klein-group framework (mirror, complement, combined)
 
 ```wolfram
-envMirror = LeanImportString[ Import[ FileNameJoin[ { leanProjectDir, "Proofs", "ElementaryCellularAutomatonMirror.lean" } ], "Text" ], "ProjectDir" -> leanProjectDir ];
-Length[ Keys[ envMirror ] ]
+envKlein = LeanImportString[ Import[ FileNameJoin[ { leanProjectDir, "Proofs", "ElementaryCellularAutomatonKleinGroup.lean" } ], "Text" ], "ProjectDir" -> leanProjectDir ];
+Length[ Keys[ envKlein ] ]
 ```
 
 ```wolfram
-envMirror[ "TypeOf", "ElementaryCellularAutomaton.rule110SimulatesRule124" ][ "TypeForm" ]
+envKlein[ "TypeOf", "ElementaryCellularAutomaton.mirrorRuleSimulatesRule" ][ "TypeForm" ]
 ```
 
-### Conjugation framework (Klein-4)
-
 ```wolfram
-envConj = LeanImportString[ Import[ FileNameJoin[ { leanProjectDir, "Proofs", "ElementaryCellularAutomatonConjugation.lean" } ], "Text" ], "ProjectDir" -> leanProjectDir ];
-Length[ Keys[ envConj ] ]
+envKlein[ "TypeOf", "ElementaryCellularAutomaton.ruleSimulatesMirrorRule" ][ "TypeForm" ]
 ```
 
 The generic, rule-parametric theorems:
 
 ```wolfram
-envConj[ "TypeOf", "ElementaryCellularAutomaton.complementSimulationGeneral" ][ "TypeForm" ]
+envKlein[ "TypeOf", "ElementaryCellularAutomaton.complementSimulationGeneral" ][ "TypeForm" ]
 ```
 
 ```wolfram
-envConj[ "TypeOf", "ElementaryCellularAutomaton.mirrorSimulationGenericGeneral" ][ "TypeForm" ]
+envKlein[ "TypeOf", "ElementaryCellularAutomaton.mirrorSimulationGenericGeneral" ][ "TypeForm" ]
 ```
 
 The specific Rule 110 orbit identifications (each is a `decide` over 8 neighbourhoods):
 
 ```wolfram
-envConj[ "TypeOf", "ElementaryCellularAutomaton.mirrorRule_rule110" ][ "TypeForm" ]
+envKlein[ "TypeOf", "ElementaryCellularAutomaton.mirrorRule_rule110" ][ "TypeForm" ]
 ```
 
 ```wolfram
-envConj[ "TypeOf", "ElementaryCellularAutomaton.complementRule_rule110" ][ "TypeForm" ]
+envKlein[ "TypeOf", "ElementaryCellularAutomaton.complementRule_rule110" ][ "TypeForm" ]
 ```
 
 ```wolfram
-envConj[ "TypeOf", "ElementaryCellularAutomaton.mirrorRule_rule137" ][ "TypeForm" ]
+envKlein[ "TypeOf", "ElementaryCellularAutomaton.mirrorRule_rule137" ][ "TypeForm" ]
 ```
 
 The two new edges:

@@ -19,9 +19,7 @@ The `n ≥ 3` constraint comes only from the mirror — index arithmetic on the 
 
 ## Lean formalization
 
-`Lean/Proofs/ElementaryCellularAutomatonConjugation.lean` (generic Klein-4 framework, plus the new edges).
-
-`Lean/Proofs/ElementaryCellularAutomatonMirror.lean` (kept as the originally-locked source of the mirror simulation; the Klein-4 file imports its `reverseTape` and arithmetic helpers).
+`Lean/Proofs/ElementaryCellularAutomatonKleinGroup.lean` (generic Klein-4 framework, the generic mirror/complement wrappers, and the Rule 110 orbit specializations).
 
 ### Generic, rule-parametric theorems
 
@@ -43,10 +41,11 @@ Defined for any rule, not just Rule 110:
 
 ### Simulation wrappers
 
+- `mirrorRuleSimulatesRule`, `ruleSimulatesMirrorRule` — generic mirror wrappers (`n ≥ 3`)
 - `rule110SimulatesRule137`, `rule137SimulatesRule110` — complement edge (no length constraint)
 - `rule110SimulatesRule193`, `rule193SimulatesRule110` — combined edge (`n ≥ 3`)
 
-**Status:** 0 sorry. Axiom closure: `[propext, Quot.sound]`. Registered in `Lean/Edges.lean` as `edge_ECA110_ECA137`, `edge_ECA137_ECA110`, `edge_ECA110_ECA193`, `edge_ECA193_ECA110`.
+**Status:** 0 sorry. Axiom closure: `[propext, Quot.sound]`. Registered in `Lean/Edges.lean` as `edge_ECA110_ECA124`, `edge_ECA124_ECA110`, `edge_ECA110_ECA137`, `edge_ECA137_ECA110`, `edge_ECA110_ECA193`, `edge_ECA193_ECA110`.
 
 ## Why these are "trivial" symmetries
 
