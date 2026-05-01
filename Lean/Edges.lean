@@ -165,41 +165,45 @@ def edge_TMtoGS (machine : TuringMachine.Machine)
 
 /-- **GS → TM edge** (Moore 1991, Theorem 8). σ=1, τ ≤ 2(w-1) + maxShift.
 
-    The existing `gsToTMSimulation` in the proof file has two `sorry`s in its
-    `commutes` and `halting` fields. This wrapper rebuilds the `Simulation`
-    cleanly using the existing `gsToTMCommutes` lemma plus an explicit
-    halting hypothesis.
+    Uses `SimulationEncoding` (conjugation form): `decodeConfigPadded` absorbs
+    the [0]-phantom from short-tape `shiftBy` underflows. Symmetric to TM → GS
+    (which uses normalized BiTM step on the source side).
 
-    Open hypotheses:
-    - `hSim`: the step simulation property (provable for w=1; w≥2 is open in
-      `fullSim_general`).
+    Open hypotheses (passed through to `gsToTMSimulationEncoding`):
+    - `hAlpha`, `hWidth`: machine well-formedness.
     - `hLen`: every reachable GS config has cells of length `windowWidth`.
     - `hShift`: every active window has shift magnitude ≥ 1.
+    - `hRepl`: every active window's replacement has length `windowWidth`.
+    - `hCellBoundAll`: GS cells bounded by alphabet size.
     - `hHalt`: inactive GS configs encode to halting TM configs. -/
 def edge_GStoTM (params : GeneralizedShiftToTuringMachine.GSParams)
-    (hSim : GeneralizedShiftToTuringMachine.StepSimulation params)
+    (hAlpha : params.alphabetSize ≥ 1)
+    (hWidth : params.windowWidth ≥ 1)
     (hLen : ∀ gsConfig gsConfig',
       GeneralizedShift.step (GeneralizedShiftToTuringMachine.gsMachine params) gsConfig
         = some gsConfig' →
       gsConfig.cells.length = params.windowWidth)
     (hShift : ∀ w, params.gsIsActive w = true →
       (params.gsTransition w).shiftMagnitude ≥ 1)
+    (hRepl : ∀ w, params.gsIsActive w = true →
+      (params.gsTransition w).replacement.length = params.windowWidth)
+    (hCellBoundAll : ∀ gsConfig gsConfig',
+      GeneralizedShift.step (GeneralizedShiftToTuringMachine.gsMachine params) gsConfig
+        = some gsConfig' →
+      ∀ x, x ∈ gsConfig.cells → x < params.alphabetSize)
     (hHalt : ∀ gsConfig,
       GeneralizedShift.step (GeneralizedShiftToTuringMachine.gsMachine params) gsConfig = none →
       ComputationalMachine.Halts
         (BiInfiniteTuringMachine.toComputationalMachine
           (GeneralizedShiftToTuringMachine.toBiTM params))
         (GeneralizedShiftToTuringMachine.encodeConfig gsConfig)) :
-    ComputationalMachine.Simulation
+    ComputationalMachine.SimulationEncoding
       (BiInfiniteTuringMachine.toComputationalMachine
         (GeneralizedShiftToTuringMachine.toBiTM params))
       (GeneralizedShift.toComputationalMachine
-        (GeneralizedShiftToTuringMachine.gsMachine params)) where
-  encode := GeneralizedShiftToTuringMachine.encodeConfig
-  commutes := fun config config' h =>
-    GeneralizedShiftToTuringMachine.gsToTMCommutes params hSim config config'
-      (hLen config config' h) hShift h
-  halting := hHalt
+        (GeneralizedShiftToTuringMachine.gsMachine params)) :=
+  GeneralizedShiftToTuringMachine.gsToTMSimulationEncoding params hAlpha hWidth
+    hLen hShift hRepl hCellBoundAll hHalt
 
 /- ── Tag → CTS (Cook 2004) ── -/
 
@@ -331,15 +335,18 @@ def edgeRegistry : List EdgeMetadata := [
     targetDescription := "Generalized Shift gsMachine(params)"
     paperReference := "Moore 1991, Theorem 8"
     status := .conditional
-    claimShape := .simulation
+    claimShape := .simulationEncoding
     hypotheses := [
-      "hSim : StepSimulation params — w=1 proved, w≥2 open in fullSim_general",
+      "hAlpha : alphabetSize ≥ 1",
+      "hWidth : windowWidth ≥ 1",
       "hLen : reachable configs have correct window width",
       "hShift : active windows have shiftMagnitude ≥ 1",
+      "hRepl : active windows have replacement length = windowWidth",
+      "hCellBoundAll : reachable configs have alphabet-bounded cells",
       "hHalt : inactive GS configs encode to halting TM configs"
     ]
     parameters := ["params : GSParams"]
-    notes := "σ=1 τ ≤ 2(w-1) + maxShift. This wrapper avoids the buried sorry in the proof file's gsToTMSimulation by reconstructing Simulation cleanly." },
+    notes := "σ=1 τ ≤ 2(w-1) + maxShift. SimulationEncoding (conjugation form): encode = encodeConfig, decode = decodeConfigPadded (pads cells to length w with 0 when right tape underflows). Symmetric to TM → GS. Chain (`fullSim_general_cView`) is fully proved (0 sorry). Bridge (`decodePadded_*`) is open: per-step bridges shiftRight/shiftLeft and the mag-induction full bridge are stated but not yet discharged (deferred — list-arithmetic case analysis)." },
   { shortName := "Tag_CTS"
     theoremName := `UniversalityGraph.edge_TagtoCTS
     sourceDescription := "CyclicTagSystem (Cook encoding of ts)"
