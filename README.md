@@ -20,7 +20,7 @@ The generated data is organized as a **universality graph**: vertices are comput
 | TM ↔ Generalized Shift (Moore 1991) | [Markdown](Wiki/Notebooks/TM_GS.md) | [Notebook](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/TM_GS.nb) |
 | Cocke–Minsky Chain (TM → Tag → CTS → (2,3) TM) | [Markdown](Wiki/Notebooks/CockeMinsky.md) | [Notebook](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/CockeMinsky.nb) |
 | The Universality Graph | [Markdown](Wiki/Notebooks/UniversalityGraph.md) | [Notebook](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/UniversalityGraph.nb) |
-| Cross-Validation (Lean vs. Wolfram) | [Markdown](Wiki/Notebooks/CrossValidation.md) | — |
+| Cross-Validation (Lean vs. Wolfram) | [Markdown](Wiki/Notebooks/CrossValidation.md) | [Notebook](https://www.wolframcloud.com/obj/hajek_pavel/UniversalityGraph/CrossValidation.nb) |
 
 ## Verified Simulation Edges
 

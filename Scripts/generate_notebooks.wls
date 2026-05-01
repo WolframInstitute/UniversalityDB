@@ -44,10 +44,9 @@ sanitizeContext[ name_String ] :=
   ]
 
 parseHeldStatements[ boxes_ ] :=
-  Module[ { source, expr },
-    source = Quiet @ Check[ ToExpression[ ToString[ boxes, InputForm ], InputForm ], $Failed ];
-    If[ source === $Failed, Return[ $Failed ] ];
-    expr = Quiet @ Check[ ToExpression[ source, InputForm, HoldComplete ], $Failed ];
+  Module[ { unifiedBoxes, expr },
+    unifiedBoxes = If[ ListQ[ boxes ], RowBox[ boxes ], boxes ];
+    expr = Quiet @ Check[ ToExpression[ unifiedBoxes, StandardForm, HoldComplete ], $Failed ];
     If[ expr === $Failed, Return[ $Failed ] ];
     Replace[
       expr,
@@ -75,7 +74,7 @@ buildOutputCells[ boxes_, notebookDir_String ] :=
     ];
     cells = {};
     Do[ AppendTo[ cells, Cell[ p, "Print" ] ], { p, prints } ];
-    If[ result =!= Null,
+    If[ result =!= Null && result =!= "EvalError",
       AppendTo[ cells, Cell[ BoxData[ ToBoxes[ result ] ], "Output" ] ] ];
     cells
   ]
