@@ -43,23 +43,27 @@ sanitizeContext[ name_String ] :=
       sanitized ]
   ]
 
+parseHeldStatements[ boxes_ ] :=
+  Module[ { source, expr },
+    source = Quiet @ Check[ ToExpression[ ToString[ boxes, InputForm ], InputForm ], $Failed ];
+    If[ source === $Failed, Return[ $Failed ] ];
+    expr = Quiet @ Check[ ToExpression[ source, InputForm, HoldComplete ], $Failed ];
+    If[ expr === $Failed, Return[ $Failed ] ];
+    Replace[
+      expr,
+      HoldComplete[ args___ ] :> DeleteCases[ Hold /@ Unevaluated[ { args } ], Hold[ Null ] ]
+    ]
+  ]
+
 (* Evaluate a single Input cell's boxes, returning a list of cells:
    - any Print outputs as Text cells (if produced)
    - the Output cell holding the result (or Failure cell on error)
    - empty list if the result is Null and no prints occurred. *)
 SetAttributes[ buildOutputCells, HoldAll ];
 buildOutputCells[ boxes_, notebookDir_String ] :=
-  Module[ { joined, expr, prints, result, cells },
-    (* A multi-line Input cell is stored as BoxData[{row1, "\n", row2, ...}].
-       Calling ToExpression on the bare list maps element-wise (each "\n" parses
-       to Hold[Null]), so Hold ends up with one arg per box plus extras for the
-       newlines, and ReleaseHold yields a list of Nulls. Wrap in RowBox to force
-       single-input parsing, then collapse the multi-arg Hold into a single
-       CompoundExpression. *)
-    joined = If[ Head[ boxes ] === List, RowBox[ boxes ], boxes ];
-    expr = Quiet @ Check[ ToExpression[ joined, StandardForm, Hold ], $Failed ];
-    expr = Replace[ expr, Hold[ args__ ] :> Hold[ CompoundExpression[ args ] ] ];
-    If[ expr === $Failed,
+  Module[ { statements, prints, result, cells },
+    statements = parseHeldStatements[ boxes ];
+    If[ statements === $Failed,
       Return[ { Cell[ BoxData[ ToBoxes[ Failure[ "ParseError",
         <| "MessageTemplate" -> "Could not parse Input cell." |> ] ] ], "Output" ] } ] ];
     prints = {};
@@ -67,7 +71,7 @@ buildOutputCells[ boxes_, notebookDir_String ] :=
       { NotebookDirectory, Print },
       NotebookDirectory[___] := notebookDir;
       Print[ args___ ] := AppendTo[ prints, StringJoin[ ToString /@ { args } ] ];
-      Quiet @ Check[ ReleaseHold[ expr ], "EvalError" ]
+      Fold[ Quiet @ Check[ ReleaseHold[ #2 ], "EvalError" ] &, Null, statements ]
     ];
     cells = {};
     Do[ AppendTo[ cells, Cell[ p, "Print" ] ], { p, prints } ];

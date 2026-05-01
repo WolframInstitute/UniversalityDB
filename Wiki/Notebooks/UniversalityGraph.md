@@ -3,8 +3,7 @@
 ## Preamble
 
 ```wolfram
-SetDirectory[ NotebookDirectory[] ]
-Get[ "Wolfram/UniversalityGraph.wl" ]
+Get[ FileNameJoin[ { NotebookDirectory[], "..", "Wolfram", "UniversalityGraph.wl" } ] ]
 ```
 
 ## The Graph
