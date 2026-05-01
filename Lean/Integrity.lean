@@ -61,7 +61,6 @@ private def keyTheorems : List Name := [
   `GeneralizedShiftToTuringMachine.gsToTMSimulationEncoding,
   -- Cook 2004: Tag → CTS
   `TagSystem.tagToCyclicTagSystemHaltingForward,
-  `TagSystem.tagToCTSSimulation,
   -- Cocke-Minsky chain: wolfram23 universal
   `BiInfiniteTuringMachine.wolfram23Universal,
   `BiInfiniteTuringMachine.wolfram23HaltingSimulation,

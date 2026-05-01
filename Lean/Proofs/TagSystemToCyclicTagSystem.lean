@@ -591,17 +591,16 @@ theorem tagToCTSCommutes {k : Nat} (ts : Tag k) (hk : k > 0)
     rw [CyclicTagSystem.iterationStep_eq_exactSteps]
     exact tagToCyclicTagSystemSimulation ts hk config config' h_step⟩
 
-/-- Tag → CTS as a `Simulation`.
-    The `halting` field requires `sorry`: a halted single-element tag word `[a]`
-    maps to a CTS config with `k` bits of data, which does NOT immediately halt.
-    Full halting preservation requires `Tag.HaltsEmpty` (reaching the empty word),
-    proved separately in `tagToCyclicTagSystemHaltingForward`. -/
-def tagToCTSSimulation {k : Nat} (ts : Tag k) (hk : k > 0) :
-    ComputationalMachine.Simulation
-      (CyclicTagSystem.toComputationalMachine (tagToCyclicTagSystem ts hk))
-      (ts.toComputationalMachine) where
-  encode := tagConfigurationToCyclicTagSystem k
-  commutes := tagToCTSCommutes ts hk
-  halting := by intro config h_step; sorry
+/- Tag → CTS as a `Simulation`: assembled directly in `Lean/Edges.lean`
+   (`UniversalityGraph.edge_TagtoCTS`). The `halting` field of that simulation is
+   not provable from `tagToCTSCommutes` alone, because Cook's CTS encoding does
+   not preserve halting on single-element tag words: encode `[a]` is `k` bits
+   and the CTS only halts on this configuration when `productions a` is empty.
+   The edge wrapper therefore takes an explicit hypothesis
+     `hHalt : ∀ cfg, ts.step cfg = none → CTS.Halts (encode cfg)`
+   which holds for the tag systems that arise in Cocke-Minsky-style universality
+   constructions (where halting goes through the empty word). The standalone
+   simulation has been intentionally omitted to keep this conditionality
+   visible in the edge's type. -/
 
 end TagSystem

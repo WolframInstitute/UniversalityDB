@@ -131,7 +131,7 @@ def edge_ECA193_ECA110 (n : Nat) (hn : n ≥ 3) :
 
 /- ── TM → GS edge (Moore Theorem 7, fully proved) ──
    The proof and supporting helpers live in `Lean/Proofs/TMtoGS.lean`;
-   `SimulationEncoding` lives in `Lean/SimulationEncoding.lean`. -/
+  `SimulationEncoding` lives in `Lean/SimulationEncoding.lean`. -/
 
 /-- **TM → GS edge** (Moore 1991, Theorem 7): returns a `SimulationEncoding`
     with `encode = encodeBiTM`, `decode = decodeBiTMNormalized`. The B side
@@ -208,16 +208,17 @@ def edge_GStoTM (params : GeneralizedShiftToTuringMachine.GSParams)
 
 /-- **Tag → CTS edge** (Cook 2004). 1 tag step = 2k CTS steps.
 
-    The existing `tagToCTSSimulation` in the proof file has a buried `sorry`
-    in its `halting` field (single-element tag words encode to k bits which
-    do not immediately halt CTS). This wrapper hoists the missing case as an
-    explicit hypothesis.
+    Cook's CTS encoding does not preserve halting on single-element tag words
+    (encode `[a]` is `k` bits, which does not immediately halt the CTS). The
+    edge therefore takes the singleton-halting case as an explicit hypothesis
+    rather than hiding it behind a `sorry`.
 
     Open hypothesis:
     - `hHalt`: when the tag system halts (`step = none`, i.e. word length < 2),
       the CTS-encoded configuration also halts. The fully-empty case is
-      proved as `cyclicTagSystemHaltsOnEmpty`; the single-element case is the
-      remaining gap (it eventually halts after k CTS steps, not immediately). -/
+      proved unconditionally as `cyclicTagSystemHaltsOnEmpty`; the single-
+      element case is the standing gap (`[a]` eventually halts only when
+      `productions a = []`, after `k` CTS steps). -/
 def edge_TagtoCTS {k : Nat} (ts : TagSystem.Tag k) (hk : k > 0)
     (hHalt : ∀ config : TagSystem.TagConfiguration k,
       ts.step config = none →
@@ -357,7 +358,7 @@ def edgeRegistry : List EdgeMetadata := [
       "hHalt : tag-halted configs encode to halting CTS configs (single-element gap)"
     ]
     parameters := ["k : Nat", "ts : Tag k", "hk : k > 0"]
-    notes := "1 tag step = 2k CTS steps. The single-element halting case is the only open gap; this wrapper hoists it from the buried sorry in tagToCTSSimulation." },
+    notes := "1 tag step = 2k CTS steps. The single-element halting case is the only open gap; the edge takes it as an explicit `hHalt` hypothesis." },
   { shortName := "Wolfram23_universal"
     theoremName := `UniversalityGraph.edge_CockeMinskyChain
     sourceDescription := "Wolfram's (2,3) Turing Machine"

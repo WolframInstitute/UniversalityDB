@@ -103,9 +103,9 @@ Open hypothesis (top-level parameter):
 
 `Tag.step = none` ↔ word length < 2. Two sub-cases:
 - **Length 0**: encoded as `[]`, CTS halts immediately. **Proved** (`cyclicTagSystemHaltsOnEmpty`).
-- **Length 1**: encoded as `k` bits, CTS does NOT halt immediately — it processes the one-hot symbol and *then* halts (since the production list will eventually empty). This requires extra reasoning. **Gap.**
+- **Length 1**: encoded as `k` bits. The CTS *only* halts on this configuration when `productions a = []` (after `k` steps the data drains); when `productions a` is non-empty, the CTS keeps simulating Cook's encoding on the production word and may never halt. There is no in-Lean discharge of this case for arbitrary tag systems — it is a property of the specific tag system being encoded.
 
-The gap is the reason `tagToCTSSimulation` in the proof file ends with `halting := by intro config h_step; sorry`. The wrapper `edge_TagtoCTS` hoists this to a hypothesis, exposing the gap at the top level.
+The wrapper `edge_TagtoCTS` exposes this as the explicit hypothesis `hHalt : ∀ cfg, ts.step cfg = none → CTS.Halts (encode cfg)`. For tag systems built via Cocke-Minsky from a TM, `hHalt` is satisfied because such tag systems are constructed to halt only via the empty word.
 
 ## See also
 

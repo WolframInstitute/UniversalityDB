@@ -8,7 +8,7 @@ Make every "edge in the universality graph" a top-level Lean term that a human c
 
 Two failure modes are possible today even with the existing trust model in [`ProofIntegrity`](../Concepts/ProofIntegrity.md):
 
-1. **Buried `sorry` inside a `Simulation` field.** `Lean/Proofs/TagSystemToCyclicTagSystem.lean:605` ends `tagToCTSSimulation` with `halting := by intro config h_step; sorry`. The integrity check catches this transitively (it reports `sorryAx` in the closure), but a reader skimming the file may not see the gap. The `Simulation` looks complete from the type signature.
+1. **Buried `sorry` inside a `Simulation` field.** Historically, `tagToCTSSimulation` in `Lean/Proofs/TagSystemToCyclicTagSystem.lean` ended with `halting := by intro config h_step; sorry`. The integrity check caught this transitively (it reported `sorryAx` in the closure), but a reader skimming the file might not see the gap, and the `Simulation` looked complete from the type signature. This was retired by deleting the dead reference definition: `edge_TagtoCTS` already constructs the simulation directly using `tagToCTSCommutes` plus an explicit `hHalt` hypothesis, exposing the conditionality at the top level.
 2. **Stealth-conditional definitions.** `tmToGSSimulation machine hSim hHead` takes `hSim : MooreStepSimulation machine` as a parameter. `MooreStepSimulation` is the actual content of Moore's Theorem 7. There is no Lean theorem in the project that proves it unconditionally — only `stepCommutes` for the nonempty-tape case. From outside, the edge looks proved; in fact, an empty-tape gap is hidden in the precondition.
 
 The current trust model makes hidden assumptions *detectable* (via `CollectAxioms`); this plan makes them *un-hidable* by structural convention.

@@ -17,7 +17,7 @@ Key theorems:
 - `tagToCyclicTagSystemHaltingForward` — tag halts → CTS halts
 - `cyclicTagSystemToTagHalting` — CTS halts → tag halts (backward direction)
 
-**Status:** 0 sorry. Fully proved in both directions.
+**Status:** 0 sorry in proof file. The edge wrapper `edge_TagtoCTS` is conditional on a single hypothesis `hHalt : ∀ cfg, ts.step cfg = none → CTS.Halts (encode cfg)`. This covers the single-element case `[a]`: Cook's encoding only halts on `encode [a]` when `productions a = []`, so the conditionality is real and is exposed at the top level rather than hidden behind a sorry.
 
 ## See also
 
