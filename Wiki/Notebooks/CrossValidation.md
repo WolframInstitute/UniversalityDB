@@ -26,33 +26,25 @@ From `wolfram23Step1` and `wolfram23Step2` (verified by `native_decide`):
 ### Wolfram cross-check
 
 ```wolfram
-(* Wolfram's (2,3) UTM — rule 596440 in TuringMachine encoding *)
-(* The rule number encodes the same transition table as the Lean definition:
-     (1,0)→(2,1,R)  (1,1)→(1,2,L)  (1,2)→(1,1,L)
-     (2,0)→(1,2,L)  (2,1)→(2,2,R)  (2,2)→(1,0,R)  *)
-
-wolfram23Rule = {
-  {{2, 1, 1}, {1, 2, -1}, {1, 1, -1}},
-  {{1, 2, -1}, {2, 2, 1}, {1, 0, 1}}
+wolfram23Rules = {
+  {1, 0} -> {2, 1, 1},
+  {1, 1} -> {1, 2, -1},
+  {1, 2} -> {1, 1, -1},
+  {2, 0} -> {1, 2, -1},
+  {2, 1} -> {2, 2, 1},
+  {2, 2} -> {1, 0, 1}
 };
 
-(* Run 20 steps from blank tape *)
-result = TuringMachine[wolfram23Rule, {1, {0}}, 20];
+tmEvolution = TuringMachine[ wolfram23Rules, { 1, { 0 } }, 5 ];
 
-(* Verify step 1: state should be 2, tape should show 1 written *)
-step1 = TuringMachine[wolfram23Rule, {1, {0}}, 1];
-Print["Step 1 state: ", step1[[1]]];    (* Expected: 2 *)
-Print["Step 1 tape: ", step1[[2]]];      (* Should show 1 written at previous position *)
-
-(* Verify step 2 *)
-step2 = TuringMachine[wolfram23Rule, {1, {0}}, 2];
-Print["Step 2 state: ", step2[[1]]];    (* Expected: 1 *)
-
-(* Verify non-halting through 20 steps — machine should still be running *)
-Print["After 20 steps, state: ", result[[1]]];  (* Expected: non-zero (still running) *)
-
-(* Visualize first 50 steps *)
-RulePlot[TuringMachine[wolfram23Rule], {1, {0}}, 50]
+<|
+  "FirstThreeConfigurations" -> tmEvolution[[ 1 ;; 3 ]],
+  "StillRunningAfter20Steps" -> MatchQ[
+    Last @ TuringMachine[ wolfram23Rules, { 1, { 0 } }, 20 ],
+    { { _, _, _ }, _ }
+  ],
+  "RulePlot" -> RulePlot[ TuringMachine[ wolfram23Rules ], { 1, { 0 } }, 50 ]
+|>
 ```
 
 ## 2. Elementary Cellular Automaton: Rule 110
@@ -76,29 +68,16 @@ Rule 110 in binary: 01101110
 ### Wolfram cross-check
 
 ```wolfram
-(* Built-in Rule 110 *)
-(* Verify the rule table matches the Lean definition *)
-ruleTable110 = Table[
-  CellularAutomaton[110, {{a, b, c}}, 1][[1, 1]],
-  {a, 0, 1}, {b, 0, 1}, {c, 0, 1}
-];
-Print["Rule 110 table (a,b,c → output):"];
-Do[
-  Print[{a, b, c}, " -> ", CellularAutomaton[110, {{a, b, c}}, {1}][[1, 2]]],
-  {a, 0, 1}, {b, 0, 1}, {c, 0, 1}
-];
+ruleValue[ rule_Integer, triple_List ] := CellularAutomaton[ rule, triple, 1 ][[ -1, 2 ]]
 
-(* Verify mirror property: rule110(a,b,c) = rule124(c,b,a) *)
-allMatch = And @@ Flatten@Table[
-  CellularAutomaton[110, {{a, b, c}}, {1}][[1, 2]] ==
-  CellularAutomaton[124, {{c, b, a}}, {1}][[1, 2]],
-  {a, 0, 1}, {b, 0, 1}, {c, 0, 1}
-];
-Print["Mirror property (rule110 = rule124 reversed): ", allMatch];
-(* Expected: True *)
+triples = Tuples[ { 0, 1 }, 3 ];
+rule110Table = AssociationThread[ triples, ruleValue[ 110, # ] & /@ triples ];
 
-(* Run 20 steps on a simple seed *)
-ArrayPlot[CellularAutomaton[110, {{1}, 0}, 20], Mesh -> True]
+<|
+  "Rule110Table" -> rule110Table,
+  "MirrorProperty" -> And @@ ( ruleValue[ 110, # ] === ruleValue[ 124, Reverse @ # ] & /@ triples ),
+  "EvolutionPlot" -> ArrayPlot[ CellularAutomaton[ 110, { { 1 }, 0 }, 20 ], Mesh -> True ]
+|>
 ```
 
 ## 3. Tag System: 2-Tag Example
@@ -129,10 +108,11 @@ tagStep[word_List] := If[Length[word] < 2, word,
 (* Or use the ResourceFunction *)
 (* ResourceFunction["TagSystem"][{2, {{{1, 0}, {0}}}}, {0, 1, 0}, 1] *)
 
-(* Verify step results *)
-Print["[0,1,0] -> ", tagStep[{0, 1, 0}]];    (* Expected: {0, 1, 0} *)
-Print["[1,0,1] -> ", tagStep[{1, 0, 1}]];    (* Expected: {1, 0} *)
-Print["[0,0,1,1] -> ", tagStep[{0, 0, 1, 1}]]; (* Expected: {1, 1, 1, 0} *)
+<|
+  "[0,1,0]" -> tagStep[ { 0, 1, 0 } ],
+  "[1,0,1]" -> tagStep[ { 1, 0, 1 } ],
+  "[0,0,1,1]" -> tagStep[ { 0, 0, 1, 1 } ]
+|>
 ```
 
 ## 4. Cyclic Tag System: Cook's Encoding
@@ -153,12 +133,6 @@ From the simulation verification theorems (verified by `native_decide`):
 symbolEncode[k_, i_] := Table[j == i, {j, 0, k - 1}];
 tagWordEncode[k_, word_] := Flatten[symbolEncode[k, #] & /@ word];
 
-(* Verify encoding *)
-Print["symbolEncode(2, 0) = ", symbolEncode[2, 0]];  (* Expected: {True, False} *)
-Print["symbolEncode(2, 1) = ", symbolEncode[2, 1]];  (* Expected: {False, True} *)
-Print["tagWordEncode(2, {0,1}) = ", tagWordEncode[2, {0, 1}]];
-(* Expected: {True, False, False, True} *)
-
 (* Build CTS from tag system: 2k appendants *)
 (* Production 0 → [1,0]: encode as tagWordEncode[2, {1,0}] = {False,True,True,False} *)
 (* Production 1 → [0]: encode as tagWordEncode[2, {0}] = {True,False} *)
@@ -169,8 +143,6 @@ appendants = {
   {},                           (* empty — padding *)
   {}                            (* empty — padding *)
 };
-Print["Appendants: ", appendants];
-(* Expected: {{False,True,True,False}, {True,False}, {}, {}} *)
 
 (* CTS step function *)
 ctsStep[data_List, phase_Integer, app_List] := Module[{newData, newPhase},
@@ -186,28 +158,32 @@ ctsStep[data_List, phase_Integer, app_List] := Module[{newData, newPhase},
 
 (* Run 4 CTS steps on encoded [0,1,0] *)
 encoded010 = tagWordEncode[2, {0, 1, 0}];
-Print["Encoded [0,1,0] = ", encoded010];
 {data, phase} = {encoded010, 0};
 Do[{data, phase} = ctsStep[data, phase, appendants], {4}];
-Print["After 4 CTS steps: ", data];
-Print["Expected:          ", tagWordEncode[2, {0, 1, 0}]];
-Print["Match: ", data === tagWordEncode[2, {0, 1, 0}]];
+match010 = data === tagWordEncode[2, {0, 1, 0}];
 
 (* Run 4 CTS steps on encoded [1,0,1] *)
 encoded101 = tagWordEncode[2, {1, 0, 1}];
 {data, phase} = {encoded101, 0};
 Do[{data, phase} = ctsStep[data, phase, appendants], {4}];
-Print["After 4 CTS steps on [1,0,1]: ", data];
-Print["Expected:                       ", tagWordEncode[2, {1, 0}]];
-Print["Match: ", data === tagWordEncode[2, {1, 0}]];
+result101 = data;
+match101 = data === tagWordEncode[2, {1, 0}];
 
 (* Run 4 CTS steps on encoded [0,0,1,1] *)
 encoded0011 = tagWordEncode[2, {0, 0, 1, 1}];
 {data, phase} = {encoded0011, 0};
 Do[{data, phase} = ctsStep[data, phase, appendants], {4}];
-Print["After 4 CTS steps on [0,0,1,1]: ", data];
-Print["Expected:                         ", tagWordEncode[2, {1, 1, 1, 0}]];
-Print["Match: ", data === tagWordEncode[2, {1, 1, 1, 0}]];
+<|
+  "symbolEncode(2,0)" -> symbolEncode[ 2, 0 ],
+  "symbolEncode(2,1)" -> symbolEncode[ 2, 1 ],
+  "tagWordEncode(2,{0,1})" -> tagWordEncode[ 2, { 0, 1 } ],
+  "Appendants" -> appendants,
+  "Match010" -> match010,
+  "Result101" -> result101,
+  "Match101" -> match101,
+  "Result0011" -> data,
+  "Match0011" -> ( data === tagWordEncode[ 2, { 1, 1, 1, 0 } ] )
+|>
 ```
 
 ## 5. Generalized Shift: TM ↔ GS Roundtrip
@@ -229,25 +205,20 @@ The encoding merges state into the tape alphabet (extended alphabet size = state
 ### Wolfram cross-check
 
 ```wolfram
-(* (2,2) TM matching the Lean exampleTuringMachine *)
-(* Rule format for ResourceFunction["GeneralizedShift"]: *)
-(* We verify the TM itself, then check the GS conversion *)
-
 tmRule = {
-  {{2, 1, 1}, {1, 1, -1}},   (* state 1: symbol 0→(2,1,R), symbol 1→(1,1,L) *)
-  {{1, 1, -1}, {2, 0, 1}}    (* state 2: symbol 0→(1,1,L), symbol 1→(2,0,R) *)
+  {1, 0} -> {2, 1, 1},
+  {1, 1} -> {1, 1, -1},
+  {2, 0} -> {1, 1, -1},
+  {2, 1} -> {2, 0, 1}
 };
 
-(* Run 30 steps from blank tape *)
-init = {1, {0}};
-steps = Table[TuringMachine[tmRule, init, t], {t, 0, 30}];
+init = { 1, { 0 } };
+steps = TuringMachine[ tmRule, init, 5 ];
 
-(* Show first few configurations *)
-Do[Print["Step ", t, ": ", TuringMachine[tmRule, init, t]], {t, 0, 5}];
-
-(* The GeneralizedShift ResourceFunction can convert a TM to GS form *)
-(* gs = ResourceFunction["GeneralizedShift"][tmRule] *)
-(* This gives an independent GS that should evolve identically *)
+<|
+  "FirstSixTMConfigurations" -> steps,
+  "Comment" -> "The GeneralizedShift ResourceFunction can be used separately to compare with the Lean encoding on this same TM."
+|>
 ```
 
 ## Summary

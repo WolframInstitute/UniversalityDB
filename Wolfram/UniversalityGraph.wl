@@ -107,6 +107,23 @@ toNumeric[ s_String ] := 10
 UniversalityGraphScalarWeight[ sigma_, tau_ ] :=
   scalarWeight[ sigma, tau ]
 
+stronglyConnectedComponents[ graph_Graph ] :=
+  Module[ { remaining, component, vertices },
+    vertices = VertexList[ graph ];
+    remaining = vertices;
+    Reap[
+      While[ remaining =!= {},
+        component = Select[
+          vertices,
+          GraphDistance[ graph, First[ remaining ], # ] < Infinity &&
+          GraphDistance[ graph, #, First[ remaining ] ] < Infinity &
+        ];
+        Sow[ component ];
+        remaining = Complement[ remaining, component ]
+      ]
+    ][[ 2, 1 ]]
+  ]
+
 UniversalityGraphOverheadCompose[ { sigma1_, tau1_ }, { sigma2_, tau2_ } ] :=
   { sigma1 * sigma2, tau1 * sigma2 * tau2 }
 
@@ -159,14 +176,17 @@ UniversalityGraphAddVertex[ graph_Graph, name_String, type_String ] :=
 UniversalityGraphAddEdge[ graph_Graph, source_String, target_String, sigma_, tau_, ref_String, verified_:False ] :=
   Module[ { edge = DirectedEdge[ source, target ], weight },
     weight = scalarWeight[ sigma, tau ];
-    EdgeAdd[ graph, Property[ edge, {
-      EdgeWeight -> weight, "Sigma" -> sigma, "Tau" -> tau,
-      "Reference" -> ref, "LeanVerified" -> verified,
-      EdgeStyle -> If[ verified,
-        Directive[ Thick, RGBColor[ 0.2, 0.5, 0.2 ] ],
-        Directive[ Thin, GrayLevel[ 0.5 ] ]
-      ]
-    } ] ]
+    SetProperty[
+      EdgeAdd[ graph, edge ],
+      edge -> {
+        EdgeWeight -> weight, "Sigma" -> sigma, "Tau" -> tau,
+        "Reference" -> ref, "LeanVerified" -> verified,
+        EdgeStyle -> If[ verified,
+          Directive[ Thick, RGBColor[ 0.2, 0.5, 0.2 ] ],
+          Directive[ Thin, GrayLevel[ 0.5 ] ]
+        ]
+      }
+    ]
   ]
 
 UniversalityGraphShortestPath[ graph_Graph, source_, target_ ] :=
@@ -187,7 +207,7 @@ UniversalityGraphMetrics[ graph_Graph ] :=
     "VertexCount" -> VertexCount[ graph ],
     "EdgeCount" -> EdgeCount[ graph ],
     "Diameter" -> GraphDiameter[ graph ],
-    "SCCs" -> ConnectedComponents[ graph, Method -> "StronglyConnected" ],
+    "SCCs" -> stronglyConnectedComponents[ graph ],
     "BetweennessCentrality" -> AssociationThread[
       VertexList[ graph ],
       BetweennessCentrality[ graph ]
