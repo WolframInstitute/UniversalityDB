@@ -27,8 +27,7 @@ import Proofs.TMtoGS
 import Proofs.GeneralizedShiftToTuringMachine
 import Proofs.CockeMinsky
 import Proofs.TagSystemToCyclicTagSystem
-import Proofs.ElementaryCellularAutomatonMirror
-import Proofs.ElementaryCellularAutomatonConjugation
+import Proofs.ElementaryCellularAutomatonKleinGroup
 import Edges
 import EdgeAudit
 
