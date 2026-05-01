@@ -49,8 +49,16 @@ sanitizeContext[ name_String ] :=
    - empty list if the result is Null and no prints occurred. *)
 SetAttributes[ buildOutputCells, HoldAll ];
 buildOutputCells[ boxes_, notebookDir_String ] :=
-  Module[ { expr, prints, result, cells },
-    expr = Quiet @ Check[ ToExpression[ boxes, StandardForm, Hold ], $Failed ];
+  Module[ { joined, expr, prints, result, cells },
+    (* A multi-line Input cell is stored as BoxData[{row1, "\n", row2, ...}].
+       Calling ToExpression on the bare list maps element-wise (each "\n" parses
+       to Hold[Null]), so Hold ends up with one arg per box plus extras for the
+       newlines, and ReleaseHold yields a list of Nulls. Wrap in RowBox to force
+       single-input parsing, then collapse the multi-arg Hold into a single
+       CompoundExpression. *)
+    joined = If[ Head[ boxes ] === List, RowBox[ boxes ], boxes ];
+    expr = Quiet @ Check[ ToExpression[ joined, StandardForm, Hold ], $Failed ];
+    expr = Replace[ expr, Hold[ args__ ] :> Hold[ CompoundExpression[ args ] ] ];
     If[ expr === $Failed,
       Return[ { Cell[ BoxData[ ToBoxes[ Failure[ "ParseError",
         <| "MessageTemplate" -> "Could not parse Input cell." |> ] ] ], "Output" ] } ] ];
