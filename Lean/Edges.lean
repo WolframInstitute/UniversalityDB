@@ -346,7 +346,7 @@ def edgeRegistry : List EdgeMetadata := [
       "hHalt : inactive GS configs encode to halting TM configs"
     ]
     parameters := ["params : GSParams"]
-    notes := "σ=1 τ ≤ 2(w-1) + maxShift. SimulationEncoding (conjugation form): encode = encodeConfig, decode = decodeConfigPadded (pads cells to length w with 0 when right tape underflows). Symmetric to TM → GS. Chain (`fullSim_general_cView`) is fully proved (0 sorry). Bridge (`decodePadded_*`) is open: per-step bridges shiftRight/shiftLeft and the mag-induction full bridge are stated but not yet discharged (deferred — list-arithmetic case analysis)." },
+    notes := "σ=1 τ ≤ 2(w-1) + maxShift. SimulationEncoding (conjugation form): encode = encodeConfig, decode = decodeConfigPadded (pads cells to length w with 0 when right tape underflows). Symmetric to TM → GS. **Both halting and commutes fully proved (no sorry).** Chain (`fullSim_general_cView`) discharged (0 sorry, empty axiom closure). Bridge: per-step `decodePadded_shiftRightOne` (unconditional) and `decodePadded_shiftLeftOne` (with right-length precondition propagated through the `shiftBy mag true` induction); full bridges `decodePadded_shiftByRight`/`decodePadded_shiftByLeft` chain via `Option.map_map`. Closure: [propext, Quot.sound, Classical.choice]." },
   { shortName := "Tag_CTS"
     theoremName := `UniversalityGraph.edge_TagtoCTS
     sourceDescription := "CyclicTagSystem (Cook encoding of ts)"
