@@ -39,7 +39,7 @@ deferred — paper-and-pencil-clear, tedious case analysis (cells × right tape
 |---|---|---|---|---|
 | TM → GS (Moore Thm 7) | `Lean/Proofs/TMtoGS.lean` | `SimulationEncoding` (conjugation) | σ=1, τ=1 | 0 (4 well-formedness hypotheses) |
 | GS → TM (Moore Thm 8) | `Lean/Proofs/GeneralizedShiftToTuringMachine.lean` | `SimulationEncoding` (conjugation) | σ=1, τ≤2(w-1)+m | 0 (7 well-formedness hypotheses) |
-| Tag → CyclicTag (Cook 2004) | `Lean/Proofs/TagSystemToCyclicTagSystem.lean` | `Simulation` | 1 tag step = 2k CTS steps | 1 (halting for single-element tag words) |
+| Tag → CyclicTag (Cook 2004) | `Lean/Proofs/TagSystemToCyclicTagSystem.lean` | `Simulation` | 1 tag step = 2k CTS steps | 0 (singleton-halting taken as edge hypothesis `hHalt`) |
 | ECA Rule 110 ↔ Rule 124 | `Lean/Proofs/ElementaryCellularAutomatonKleinGroup.lean` | `Simulation` | σ=1, τ=1 | 0 |
 | ECA Rule 110 ↔ Rule 137 (complement) | `Lean/Proofs/ElementaryCellularAutomatonKleinGroup.lean` | `Simulation` | σ=1, τ=1 | 0 |
 | ECA Rule 110 ↔ Rule 193 (mirror ∘ complement) | `Lean/Proofs/ElementaryCellularAutomatonKleinGroup.lean` | `Simulation` | σ=1, τ=1 | 0 |
@@ -78,7 +78,7 @@ Run `Scripts/verify_integrity.sh` to verify. The script uses `CollectAxioms.coll
 | `edge_TagtoCTS` | conditional | `hHalt` (single-element tag word case) | propext, Quot.sound, Classical.choice |
 | `edge_CockeMinskyChain` | conditional | `h_cm`, `h_smith` | propext, Quot.sound, Classical.choice |
 
-All wrapper closures are sorry-free. The buried sorries from the original proof files (`gsToTMSimulation`, `tagToCTSSimulation` halting, `wolfram23PreservesHalting` bridge) are excluded from the wrapper closures because the wrappers either rebuild the `Simulation` cleanly using existing sorry-free lemmas (e.g. `gsToTMCommutes`) or hoist the missing piece to a top-level `Prop` parameter.
+All wrapper closures are sorry-free. The remaining buried sorry in the proof files (`wolfram23PreservesHalting` bridge) is excluded from the wrapper closures because the wrappers hoist the missing piece to a top-level `Prop` parameter. The earlier `tagToCTSSimulation` sorry has been retired by removing the dead reference definition: `edge_TagtoCTS` already constructs the simulation directly via `tagToCTSCommutes` plus the explicit `hHalt` hypothesis, so no sorry is needed.
 
 Per-proof paper-driven skeletons under [Wiki/Proofs/<Name>/Skeleton.md](Proofs/) — see the [VerificationFramework](Plans/VerificationFramework.md) plan.
 

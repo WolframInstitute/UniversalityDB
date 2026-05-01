@@ -2,6 +2,32 @@
 
 Trust model for LLM-generated Lean proofs in the UniversalityDB project.
 
+## What a user can verify directly
+
+For any theorem in this repo, the intended verification path is short and explicit:
+
+1. Read the theorem type in [Lean/Edges.lean](../../Lean/Edges.lean) or the underlying proof file. This tells you exactly what is being claimed and which hypotheses are assumed.
+2. Read the machine definitions in [Lean/Machines](../../Lean/Machines). This checks that the formal objects match the mathematical ones you intend.
+3. Run `Scripts/verify_integrity.sh`. This rebuilds the project, checks axiom dependencies of the key theorems, and replays declarations through Lean's kernel with `leanchecker`.
+4. Compare Lean and Wolfram on concrete examples in the notebooks, especially [CrossValidation](../Notebooks/CrossValidation.md).
+
+This process is designed to answer the three questions that matter most:
+
+- Is the statement the one I actually want?
+- Are all substantial hypotheses explicit in the type?
+- Is the proof free of hidden Lean escape hatches?
+
+## What the trust model guarantees
+
+If a theorem passes the checks above, then:
+
+- its exact statement is the Lean type you inspected,
+- every nontrivial assumption appears as a theorem parameter rather than a hidden axiom,
+- the proof term is accepted by Lean's kernel,
+- the key theorems' axiom closures contain only the expected core axioms (plus tracked `sorry` or `_native` uses when present).
+
+What this does not guarantee by itself is that the mathematical modeling choice is the right one. That remains a specification question, which is why the machine definitions and cross-validation notebooks are part of the verification story.
+
 ## The problem
 
 An LLM generating Lean proofs can produce results that type-check but are meaningless. The known escape hatches are:
@@ -130,6 +156,13 @@ Agreement on many inputs provides empirical evidence that the definitions are co
 ## Verification procedure
 
 Run `Scripts/verify_integrity.sh`. It uses Lean's own tools — no grep or string parsing.
+
+In practice, a user who wants to check that there are no hidden hypotheses or Lean tricks should do exactly this:
+
+1. Inspect the theorem type.
+2. Inspect the machine definitions it depends on.
+3. Run the script.
+4. Check the relevant notebook or Wolfram example.
 
 **Step 1 — Build** (`lake build`):
 

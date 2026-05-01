@@ -3,7 +3,7 @@
 A database of [computational universality](https://en.wikipedia.org/wiki/Turing_completeness) proofs, formalized and verified in [Lean](https://lean-lang.org), validated and presented using Wolfram notebooks, all built and maintained by LLMs with only high-level expert guidance.
 This is to demonstrate that LLMs can autonomously push the boundary of mathematical research if they are given the right ingredients:
 
-- ✅ **Certification** — [Lean](https://lean-lang.org) link to formalize and verify proofs
+- ✅ **Verification** — [Lean](https://lean-lang.org) link to formalize and verify proofs
 - ⚙️ **Computational engine** — [Wolfram](https://www.wolfram.com/language/) link to prototype and test on finite examples
 - 📚 **Knowledge base** — a growing structured knowledge of the previous work (universality graph, wiki)
 - 🧠 **Expert guidance** — high-level guidance by members of the Wolfram Institute
@@ -31,11 +31,11 @@ Edge wrappers live in [Lean/Edges.lean](Lean/Edges.lean); each carries its hypot
 | [ECA 110 ↔ 124, 137, 193](Wiki/Proofs/ECAConjugation.md) | 1, 1 | `Simulation` | NKS p.55 | 0 |
 | [TM → Generalized Shift](Wiki/Proofs/TMtoGS.md) | 1, 1 | `SimulationEncoding` | Moore 1991, Thm. 7 | 0 |
 | [Generalized Shift → TM](Wiki/Proofs/GStoTM.md) | 1, ≤2(w−1)+m | `SimulationEncoding` | Moore 1991, Thm. 8 | 0 |
-| [2-Tag → Cyclic Tag](Wiki/Proofs/TagToCTS.md) | k, 2k | `Simulation` | Cook 2004 | 1 |
+| [2-Tag → Cyclic Tag](Wiki/Proofs/TagToCTS.md) | k, 2k | `Simulation` | Cook 2004 | 0 (singleton-halting taken as hypothesis `hHalt`) |
 | TM → 2-Tag | — | `Simulation` | Cocke 1964 | axiomatized as hypothesis `CockeMinskyStepSimulation` |
 | Cyclic Tag → (2,3) TM | — | `HaltingSimulation` | Smith 2007 | axiomatized as hypothesis `SmithSimulation` |
 
-The last three rows compose into [`edge_CockeMinskyChain`](Lean/Edges.lean), which gives `IsUniversal wolfram23` — universality of Wolfram's (2,3) TM, conditional on the two hypothesis arrows. See [Wiki/Proofs/CockeMinskyChain.md](Wiki/Proofs/CockeMinskyChain.md).
+The Cocke–Cook–Smith chain (last three rows) composes into [`edge_CockeMinskyChain`](Lean/Edges.lean), giving `IsUniversal wolfram23` — universality of Wolfram's (2,3) TM, conditional on the two hypothesis arrows and on `hHalt`. See [Wiki/Proofs/CockeMinskyChain.md](Wiki/Proofs/CockeMinskyChain.md).
 
 ## Verification
 
