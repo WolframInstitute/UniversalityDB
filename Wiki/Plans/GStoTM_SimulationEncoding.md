@@ -16,7 +16,7 @@ A padded decode `decodeConfigPadded w` (which pads cells with `0` to width `w` w
 
 ## Steps
 
-- [ ] **Step 1 — Discharge `fullSim_general_cView` (the chain).** 
+- [x] **Step 1 — Discharge `fullSim_general_cView` (the chain).** ✅ Fully proved on 2026-05-01.
   Add a new private theorem `fullSim_general_cView` with conclusion landing at the `[c]`-view (using `replAsc repl (windowWidth - 1) ++ right`). Discharge by chaining via `exactSteps_append`:
   - `readScan` (line ~1003): `w-1` steps
   - `biTM_step_lastRead` (line ~1079): 1 step
@@ -26,7 +26,7 @@ A padded decode `decodeConfigPadded w` (which pads cells with `0` to width `w` w
 
   **Tactic notes:** the right-tape rewrite `(c₁::rest)++right = init++(last::right)` requires careful handling — `rw [hsplit]` rewrites *all* occurrences of `c₁::rest` including ones nested inside `.dropLast`/`.getLast`. Use `conv => lhs => rw [hsplit]` (Lean 4 syntax — `conv_lhs` is not in this project's tactic set without Mathlib), or `nth_rewrite` if available, or pre-generalize with `generalize` before rewriting.
 
-- [ ] **Step 2 — Define `decodeConfigPadded`.**
+- [x] **Step 2 — Define `decodeConfigPadded`.** ✅ Defined; static bridge `decodeConfigPadded_encodeConfig` proved.
   ```lean
   def decodeConfigPadded (windowWidth : Nat) (tmConfig : BiInfiniteTuringMachine.Configuration)
       : Option GeneralizedShift.Configuration :=
@@ -59,9 +59,9 @@ A padded decode `decodeConfigPadded w` (which pads cells with `0` to width `w` w
   - `commutes := <use chain + bridge>`
   - `halting := hHalt` (existing form)
 
-- [ ] **Step 6 — Update `Edges.lean` `edge_GStoTM`.** Return `SimulationEncoding` instead of `Simulation`. Update registry's `claimShape := .simulationEncoding`. Update `notes` string.
+- [x] **Step 6 — Update `Edges.lean` `edge_GStoTM`.** ✅ Returns `SimulationEncoding`; registry's `claimShape := .simulationEncoding`. Notes updated.
 
-- [ ] **Step 7 — Verify.** `Scripts/verify_integrity.sh` should report 0 sorry in the modified theorems and clean axiom closure.
+- [ ] **Step 7 — Verify.** Build passes; integrity check reports `fullSim_general_cView` axioms = `[]` (clean). `gsToTMSimulationEncoding` still tracked with `sorryAx` (deferred bridge).
 
 ## Why this fits the framework
 
@@ -98,3 +98,4 @@ The chain proof itself is a standard composition via `exactSteps_append`, but th
 | Date | Actor | Action |
 |---|---|---|
 | 2026-05-01 | LLM | Created plan; identified `decodeConfigPadded` approach; began chain proof, hit tactic-engineering friction on right-tape rewrite, deferred to scheduled session. |
+| 2026-05-01 | LLM | Resumed in dedicated session. Refactored `writeLoop` to uniform k-step form (eliminates w=2 vs w≥3 split). Added `chain_left_form` + `chain_getLastD` helpers. Discharged `fullSim_general_cView` fully (0 sorry, axiom closure `[]`). Defined `decodeConfigPadded` and proved static bridge. Stubbed per-step bridges and full bridge with `sorry`; struggled with Lean tactic engineering of the case analysis (multi-cell vs [c]-view shifts diverge by trailing-0 padding which `decodeConfigPadded` reconciles, but `Configuration` lacking `[ext]` made `congr 1; ext1` paths messy). Updated `edge_GStoTM` to `SimulationEncoding` shape; registry `claimShape := .simulationEncoding`. Build passes; `Integrity` check reports `fullSim_general_cView : []` (no propext, no choice, no sorry) and `gsToTMSimulationEncoding : [propext, sorryAx]` (sorryAx tracked from the deferred bridge). Stopping per max-3-attempts rule on bridge tactic engineering. |

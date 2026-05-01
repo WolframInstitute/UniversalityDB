@@ -57,9 +57,9 @@ private def keyTheorems : List Name := [
   `TuringMachineToGeneralizedShift.stepCommutes,
   `TuringMachineToGeneralizedShift.decodeEncode,
   `TMtoGS.tmToGSSimulation,
-  -- Moore Theorem 8: GS → TM
-  `GeneralizedShiftToTuringMachine.stepSimulation,
-  `GeneralizedShiftToTuringMachine.gsToTMSimulation,
+  -- Moore Theorem 8: GS → TM (SimulationEncoding form; conjugation via decodeConfigPadded)
+  `GeneralizedShiftToTuringMachine.fullSim_general_cView,
+  `GeneralizedShiftToTuringMachine.gsToTMSimulationEncoding,
   -- Cook 2004: Tag → CTS
   `TagSystem.tagToCyclicTagSystemHaltingForward,
   `TagSystem.tagToCTSSimulation,

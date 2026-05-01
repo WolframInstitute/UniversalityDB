@@ -38,7 +38,7 @@ deferred — paper-and-pencil-clear, tedious case analysis (cells × right tape
 | Edge | File | Template | Overhead | Sorry in proof |
 |---|---|---|---|---|
 | TM → GS (Moore Thm 7) | `Lean/Proofs/TMtoGS.lean` | `SimulationEncoding` (conjugation) | σ=1, τ=1 | 0 (4 well-formedness hypotheses) |
-| GS → TM (Moore Thm 8) | `Lean/Proofs/GeneralizedShiftToTuringMachine.lean` | `Simulation` | σ=1, τ≤2(w-1)+m | 2 (`fullSim_general` for w≥2; `gsToTMSimulation` reconstructed at wrapper) |
+| GS → TM (Moore Thm 8) | `Lean/Proofs/GeneralizedShiftToTuringMachine.lean` | `SimulationEncoding` (conjugation) | σ=1, τ≤2(w-1)+m | 4 in bridge: `decodePadded_shiftRightOne`, `decodePadded_shiftLeftOne`, `decodePadded_encodeConfig_shiftBy` (succ case both dirs), `replAsc_eq_tail`, `gsToTMSimulationEncoding.commutes`. **Chain (`fullSim_general_cView`) is fully proved with 0 sorry and empty axiom closure.** |
 | Tag → CyclicTag (Cook 2004) | `Lean/Proofs/TagSystemToCyclicTagSystem.lean` | `Simulation` | 1 tag step = 2k CTS steps | 1 (halting for single-element tag words) |
 | ECA Rule 110 ↔ Rule 124 | `Lean/Proofs/ElementaryCellularAutomatonMirror.lean` | `Simulation` | σ=1, τ=1 | 0 |
 | ECA Rule 110 ↔ Rule 137 (complement) | `Lean/Proofs/ElementaryCellularAutomatonConjugation.lean` | `Simulation` | σ=1, τ=1 | 0 |
@@ -74,7 +74,7 @@ Run `Scripts/verify_integrity.sh` to verify. The script uses `CollectAxioms.coll
 | `edge_ECA110_ECA193` | unconditional | (none) | propext, Quot.sound |
 | `edge_ECA193_ECA110` | unconditional | (none) | propext, Quot.sound |
 | `edge_TMtoGS` | conditional (4 well-formedness assumptions) | hk, hHeadAll, hWriteBound, hStateBound — **commutes and halting fully proved** | propext, Quot.sound, Classical.choice |
-| `edge_GStoTM` | conditional | `hSim`, `hLen`, `hShift`, `hHalt` | propext |
+| `edge_GStoTM` | conditional | `hAlpha`, `hWidth`, `hLen`, `hShift`, `hRepl`, `hCellBoundAll`, `hHalt` | propext, sorryAx (deferred bridge) |
 | `edge_TagtoCTS` | conditional | `hHalt` (single-element tag word case) | propext, Quot.sound, Classical.choice |
 | `edge_CockeMinskyChain` | conditional | `h_cm`, `h_smith` | propext, Quot.sound, Classical.choice |
 
@@ -107,7 +107,24 @@ Each family has a `toComputationalMachine` wrapper and an `iterationStep_eq_exac
 
 ## Current focus
 
-GS → TM general width: all building blocks fully proved (readScan, lastRead, writeLoop, writeZeroShift — 0 sorry). One sorry remains in `fullSim_general` — the composition that chains the 4 phases via `exactSteps_append`. See `Wiki/Plans/GStoTM_GeneralWidth.md`.
+GS → TM SimulationEncoding (Moore Thm 8 conjugation form). 
+
+**Done (2026-05-01):**
+- `writeLoop` reformulated to k steps from writeState(k) (uniform; no w=2 vs w≥3 split).
+- Helper lemmas `chain_left_form`, `chain_getLastD` (~25 lines).
+- **`fullSim_general_cView` fully discharged** (no sorry, empty axiom closure). The chain reads: encodeConfig → readScan + lastRead + writeLoop + writeZeroShift, landing at the [c]-view of the shift target.
+- `decodeConfigPadded` defined (pads cells with 0 to width w when right tape underflows).
+- Static bridge `decodeConfigPadded_encodeConfig` proved.
+- `gsToTMSimulationEncoding` skeleton + `edge_GStoTM` registered as `SimulationEncoding`.
+
+**Open (deferred — paper-and-pencil clear, list-arithmetic case analysis):**
+- `decodePadded_shiftRightOne` (per-step bridge, right direction). Case-split on `right` and `|right|` vs `w-1`. shiftRightOne version was nearly complete via explicit case analysis (~80 lines) but stuck on Lean tactic engineering of the `congr 1; ext1` branches due to `Configuration` having no `[ext]` lemma.
+- `decodePadded_shiftLeftOne` (symmetric).
+- `decodePadded_encodeConfig_shiftBy` (induction on mag using per-step bridges).
+- `replAsc_eq_tail` (small arithmetic lemma).
+- `gsToTMSimulationEncoding.commutes` (combines chain + bridge).
+
+See `Wiki/Plans/GStoTM_SimulationEncoding.md` History for the attempt log.
 
 ## See also
 

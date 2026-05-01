@@ -1074,8 +1074,10 @@ private theorem biTM_step_writeMid (params : GSParams) (hAlpha : params.alphabet
 -- Last read step: readState at pos = w-1, enters write phase
 -- ============================================================================
 
-/-- The last read step: from readState(w-1, partialCode) reading `last`,
-    computes full window code, writes repl[w-1], moves L, enters writeState(w-2, code). -/
+/-- The last read step (cons form): from readState(w-1, partialCode) reading
+    `last`, computes full window code, writes repl[w-1], moves L, enters
+    writeState(w-2, code). The chain proof uses `chain_left_form` to rewrite
+    `init.reverse ++ (c₀ :: origLeft)` into cons form before applying. -/
 private theorem biTM_step_lastRead (params : GSParams) (hAlpha : params.alphabetSize ≥ 1)
     (hWidth : params.windowWidth ≥ 2)
     (partialCode last l : Nat) (left right : List Nat)
@@ -1107,7 +1109,10 @@ private theorem biTM_step_lastRead (params : GSParams) (hAlpha : params.alphabet
   simp
 
 -- ============================================================================
--- Write loop: from writeState(k+1) down to writeState(0)
+-- Write loop: k steps from writeState(k) down to writeState(0).
+--
+-- Uniform shape: k=0 is the no-op identity, k≥1 inducts. Lets the chain in
+-- `fullSim_general_cView` handle w=2 and w≥3 uniformly (no case split).
 -- ============================================================================
 
 /-- replAsc repl k = [repl[1], repl[2], ..., repl[k]] (ascending index, k elements).
@@ -1126,65 +1131,59 @@ private theorem replAsc_succ_append (repl : List Nat) (k : Nat) (right : List Na
     replAsc repl (k + 1) ++ right = replAsc repl k ++ (getListElem repl (k + 1) :: right) := by
   simp [replAsc, List.append_assoc]
 
-/-- Write loop: from writeState(k+1, code), after k+1 steps, reaches writeState(0, code).
-    Pops k+1 cells from left; pushes repl[1], ..., repl[k+1] onto right. -/
+/-- Write loop: from writeState(k, code) with `ls` (length k) atop the left
+    tape, k steps reach writeState(0, code), popping `ls` from left and
+    pushing `replAsc repl k` onto right. The k=0 case is the no-op identity. -/
 private theorem writeLoop (params : GSParams) (hAlpha : params.alphabetSize ≥ 1)
     (code : Nat) (hCode : code < nPow params.alphabetSize params.windowWidth) :
-    ∀ (k : Nat) (head l : Nat) (ls : List Nat) (left₀ right : List Nat),
+    ∀ (k : Nat) (head : Nat) (ls : List Nat) (left₀ right : List Nat),
     ls.length = k →
-    k + 1 < params.windowWidth →
+    k < params.windowWidth →
     let repl := (params.gsTransition
       (decodeWindow params.alphabetSize params.windowWidth code)).replacement
     BiInfiniteTuringMachine.exactSteps (toBiTM params)
-      { state := writeState params (k + 1) code,
-        left := l :: (ls ++ left₀), head := head, right := right }
-      (k + 1) =
+      { state := writeState params k code,
+        left := ls ++ left₀, head := head, right := right }
+      k =
     some { state := writeState params 0 code,
-           left := left₀, head := ls.getLastD l,
-           right := replAsc repl (k + 1) ++ right } := by
+           left := left₀, head := ls.getLastD head,
+           right := replAsc repl k ++ right } := by
   intro k
   induction k with
   | zero =>
-    intro head l ls left₀ right hLen hkW
+    intro head ls left₀ right hLen _hkW
     simp at hLen; subst hLen
-    simp only [List.nil_append, List.getLastD, replAsc, List.nil_append, List.cons_append,
-      List.append_nil]
-    rw [show (0 + 1 : Nat) = 0 + 1 from rfl,
-        exactSteps_succ _ _ _ _
-          (biTM_step_writeMid params hAlpha 1 code head l left₀ right
-            (by omega) (by omega) hCode)]
-    simp [BiInfiniteTuringMachine.exactSteps]
+    simp [BiInfiniteTuringMachine.exactSteps, replAsc, List.getLastD]
   | succ n ih =>
-    intro head l ls left₀ right hLen hkW
+    intro head ls left₀ right hLen hkW
     match hls : ls with
     | [] => simp at hLen
-    | l' :: ls' =>
+    | l :: ls' =>
       simp only [List.length_cons] at hLen
       have hls'Len : ls'.length = n := by omega
-      rw [show n + 1 + 1 = 1 + (n + 1) from by omega]
-      rw [exactSteps_append _ _
-            { state := writeState params (n + 1) code,
-              left := l' :: (ls' ++ left₀), head := l,
-              right := getListElem (params.gsTransition
-                (decodeWindow params.alphabetSize params.windowWidth code)).replacement (n + 2)
-                :: right }
-            1 (n + 1)]
-      · -- IH for remaining n+1 steps
-        simp only at ih ⊢
-        have hIH := ih l l' ls' left₀
-              (getListElem (params.gsTransition
-                (decodeWindow params.alphabetSize params.windowWidth code)).replacement (n + 2)
-                :: right)
-              hls'Len (by omega)
-        rw [show 1 + (n + 1) = n + 2 from by omega, getLastD_cons, replAsc_succ_append]
-        exact hIH
-      · -- Single write step
-        simp only [show 1 + (n + 1) = n + 2 from by omega, List.cons_append]
-        rw [show (1 : Nat) = 0 + 1 from rfl,
-            exactSteps_succ _ _ _ _
-              (biTM_step_writeMid params hAlpha (n + 2) code head l (l' :: (ls' ++ left₀)) right
-                (by omega) (by omega) hCode)]
-        simp [BiInfiniteTuringMachine.exactSteps, show n + 2 - 1 = n + 1 from by omega]
+      -- Single writeMid step: from writeState(n+1) peel l off left, push repl[n+1] onto right.
+      have hStep : BiInfiniteTuringMachine.step (toBiTM params)
+          { state := writeState params (n + 1) code,
+            left := (l :: ls') ++ left₀, head := head, right := right } =
+          some { state := writeState params n code,
+                 left := ls' ++ left₀, head := l,
+                 right := getListElem (params.gsTransition
+                   (decodeWindow params.alphabetSize params.windowWidth code)).replacement (n + 1)
+                   :: right } := by
+        simp only [List.cons_append]
+        rw [biTM_step_writeMid params hAlpha (n + 1) code head l (ls' ++ left₀) right
+              (by omega) (by omega) hCode]
+        simp [show n + 1 - 1 = n from by omega]
+      -- Decompose n+1 steps as 1 + n via exactSteps_succ + IH.
+      rw [exactSteps_succ _ _ _ _ hStep]
+      -- IH for remaining n steps
+      simp only at ih ⊢
+      have hIH := ih l ls' left₀
+            (getListElem (params.gsTransition
+              (decodeWindow params.alphabetSize params.windowWidth code)).replacement (n + 1)
+              :: right)
+            hls'Len (by omega)
+      rw [hIH, getLastD_cons, replAsc_succ_append]
 
 -- ============================================================================
 -- Write-zero + shift: from writeState(0), mag steps to final target
@@ -1267,13 +1266,61 @@ private theorem writeZeroShift (params : GSParams) (hAlpha : params.alphabetSize
       cases left <;> (simp [readHead]; rw [shiftPhase_correct]; congr 1)
 
 -- ============================================================================
--- Full simulation for w ≥ 2: read + write + shift phases
+-- Chain helper lemmas for `fullSim_general_cView`
 -- ============================================================================
 
-/-- For w ≥ 2: the full TM simulation starting from state 1 matches one GS step.
-    2(w-1) + mag TM steps from encodeConfig reach encodeConfig of the GS result.
-    Requires tape-length bounds to handle 0-padding in shiftBy. -/
-private theorem fullSim_general (params : GSParams)
+/-- Bring a `init.reverse ++ (c₀ :: origLeft)` left tape into cons form, naming
+    the head as `(c₀ :: init).getLast` and the tail as `(c₀ :: init).dropLast.reverse ++ origLeft`.
+    Avoids case-splitting on `init` in the chain proof: handles `init = []` and
+    `init = h :: t` uniformly. -/
+private theorem chain_left_form (init : List Nat) (c₀ : Nat) (origLeft : List Nat) :
+    init.reverse ++ (c₀ :: origLeft) =
+    (c₀ :: init).getLast (List.cons_ne_nil c₀ init) ::
+      ((c₀ :: init).dropLast.reverse ++ origLeft) := by
+  have h_ne : (c₀ :: init) ≠ [] := List.cons_ne_nil c₀ init
+  have h_split : (c₀ :: init).dropLast ++ [(c₀ :: init).getLast h_ne] = c₀ :: init :=
+    dropLast_append_getLast h_ne
+  -- Step 1: init.reverse ++ (c₀::origLeft) = (c₀::init).reverse ++ origLeft
+  have h1 : init.reverse ++ (c₀ :: origLeft) = (c₀ :: init).reverse ++ origLeft := by
+    show init.reverse ++ ([c₀] ++ origLeft) = _
+    rw [← List.append_assoc]
+    show (init.reverse ++ [c₀]) ++ origLeft = _
+    rw [show init.reverse ++ [c₀] = (c₀ :: init).reverse from by rw [List.reverse_cons]]
+  rw [h1]
+  -- Step 2: (c₀::init).reverse = (c₀::init).getLast h_ne :: (c₀::init).dropLast.reverse
+  have h2 : (c₀ :: init).reverse =
+      (c₀ :: init).getLast h_ne :: (c₀ :: init).dropLast.reverse := by
+    have hr := congrArg List.reverse h_split
+    rw [List.reverse_append, List.reverse_singleton, List.singleton_append] at hr
+    exact hr.symm
+  rw [h2]; rfl
+
+/-- After writeLoop pops `(c₀::init).dropLast.reverse` from the left tape, the
+    final head equals `c₀`. Holds uniformly: `init = []` (head = default) and
+    `init = h :: t` (head = last element of non-empty list). -/
+private theorem chain_getLastD (init : List Nat) (c₀ : Nat) :
+    (c₀ :: init).dropLast.reverse.getLastD
+        ((c₀ :: init).getLast (List.cons_ne_nil c₀ init)) = c₀ := by
+  cases init with
+  | nil => rfl
+  | cons i₀ is =>
+    show (c₀ :: (i₀ :: is).dropLast).reverse.getLastD _ = c₀
+    rw [List.reverse_cons]
+    exact List.getLastD_concat
+
+-- ============================================================================
+-- Full simulation for w ≥ 2 ([c]-view, no tape-length precondition).
+--
+-- Lands at the [c]-view (head=r₀, right=replAsc++right) — the natural shape of
+-- the chain. The bridge to the multi-cell view (encodeConfig of the GS step)
+-- is supplied separately by `decodeConfigPadded` for `SimulationEncoding`.
+-- ============================================================================
+
+/-- For w ≥ 2: 2(w-1) + mag TM steps from encodeConfig reach the [c]-view of the
+    shift target — head = repl[0], right tape carries `replAsc repl (w-1)` then
+    the original right tape. Symmetric to `fullSim_w1` (which uses [c]-view too,
+    just without the read/write phases). -/
+private theorem fullSim_general_cView (params : GSParams)
     (hAlpha : params.alphabetSize ≥ 1)
     (hWidth : params.windowWidth ≥ 2)
     (cells : List Nat) (repl : List Nat)
@@ -1282,123 +1329,310 @@ private theorem fullSim_general (params : GSParams)
     (hCellBound : ∀ x, x ∈ cells → x < params.alphabetSize)
     (hRepl : (params.gsTransition cells).replacement = repl)
     (hReplLen : repl.length = params.windowWidth)
-    (hReplBound : ∀ x, x ∈ repl → x < params.alphabetSize)
     (hMag : (params.gsTransition cells).shiftMagnitude ≥ 1)
     (left right : List Nat) :
     BiInfiniteTuringMachine.exactSteps (toBiTM params)
       (encodeConfig { left := left, cells := cells, right := right })
       (2 * (params.windowWidth - 1) + (params.gsTransition cells).shiftMagnitude) =
     some (encodeConfig (shiftBy
-      { left := left, cells := repl, right := right }
+      { left := left,
+        cells := [getListElem repl 0],
+        right := replAsc repl (params.windowWidth - 1) ++ right }
       (params.gsTransition cells).shiftMagnitude
       (params.gsTransition cells).shiftLeft)) := by
-  -- Decompose cells into c₀ :: rest (nonempty since w ≥ 2)
+  -- Decompose cells = c₀ :: tail (cells.length = w ≥ 2). The `match` substitutes
+  -- `cells` to the matched pattern in both hypotheses and the goal.
   match hcells : cells with
   | [] => simp at hLen; omega
-  | [_] => simp at hLen; omega
-  | c₀ :: c₁ :: rest =>
-    -- encodeConfig {left, c₀::c₁::rest, right} = {state=1, left, head=c₀, right=c₁::rest++right}
-    -- Split c₁::rest into init ++ [last] for readScan
-    have hne_cr : c₁ :: rest ≠ [] := List.cons_ne_nil c₁ rest
-    have hsplit : c₁ :: rest = (c₁ :: rest).dropLast ++ [(c₁ :: rest).getLast hne_cr] :=
-      (dropLast_append_getLast hne_cr).symm
-    -- Abbreviations (not using set to avoid tactic issues)
-    have hInitLen : (c₁ :: rest).dropLast.length = rest.length := by
-      simp [List.length_dropLast]
-    have hw : params.windowWidth = rest.length + 2 := by simp at hLen; omega
-    -- The composition is: readScan + lastRead + writeLoop + writeZeroShift + bridge
-    -- Total: (w-1) + 1 + (w-2) + mag = 2*(w-1) + mag
-    -- This proof chains the building blocks via exactSteps_append.
-    -- Due to the complexity of tracking list operations through 4 phases,
-    -- the full composition is deferred. The building blocks are all proved:
-    -- readScan, biTM_step_lastRead, writeLoop, writeZeroShift, encodeConfig_shiftBy_flatten.
-    sorry
-
--- NOTE: A `[c]`-view variant `fullSim_general_cView` is the right vehicle for
--- producing a `SimulationEncoding` (with `decodeConfigPadded`) without any
--- tape-length precondition. The chain proof (~80-150 lines) is deferred to a
--- dedicated session — see `Wiki/Plans/GStoTM_SimulationEncoding.md`.
+  | c₀ :: tail =>
+    -- tail has length w-1, hence is non-empty. Split tail = init ++ [last].
+    have htailLen : tail.length = params.windowWidth - 1 := by
+      have := hLen; simp at this; omega
+    have htailNe : tail ≠ [] := by
+      intro h; rw [h] at htailLen; simp at htailLen; omega
+    have hsplit : tail.dropLast ++ [tail.getLast htailNe] = tail :=
+      dropLast_append_getLast htailNe
+    have hinitLen : tail.dropLast.length = params.windowWidth - 2 := by
+      rw [List.length_dropLast]; omega
+    -- After the match, `cells` is substituted to `c₀ :: tail`. State the snoc
+    -- form via `tail.dropLast ++ [tail.getLast htailNe] = tail`.
+    have hcells_split : (c₀ :: tail) = c₀ :: tail.dropLast ++ [tail.getLast htailNe] := by
+      rw [show c₀ :: tail.dropLast ++ [tail.getLast htailNe] =
+            c₀ :: (tail.dropLast ++ [tail.getLast htailNe]) from rfl, hsplit]
+    have hRightForm : tail ++ right = tail.dropLast ++ (tail.getLast htailNe :: right) := by
+      rw [show tail.dropLast ++ (tail.getLast htailNe :: right)
+            = (tail.dropLast ++ [tail.getLast htailNe]) ++ right from by simp, hsplit]
+    -- Cell bounds: c₀, init, last all < alphabetSize. `hCellBound` already has
+    -- `cells` substituted to `c₀ :: tail`.
+    have hC₀ : c₀ < params.alphabetSize := hCellBound c₀ (List.Mem.head _)
+    have hCInit : ∀ x, x ∈ tail.dropLast → x < params.alphabetSize := fun x hx => by
+      apply hCellBound
+      rw [hcells_split]
+      exact List.Mem.tail c₀ (List.mem_append_left _ hx)
+    have hLast : tail.getLast htailNe < params.alphabetSize := by
+      apply hCellBound
+      rw [hcells_split]
+      exact List.Mem.tail c₀ (List.mem_append_right _ (List.mem_singleton.mpr rfl))
+    -- code = encodeWindow (c₀ :: init); fullCode = code * α + last; both bounded.
+    have hWinLen : (c₀ :: tail.dropLast).length = params.windowWidth - 1 := by
+      simp [List.length_cons]; omega
+    have hWinBound : ∀ x, x ∈ (c₀ :: tail.dropLast) → x < params.alphabetSize := by
+      intro x hx
+      cases hx with
+      | head => exact hC₀
+      | tail _ hxin => exact hCInit x hxin
+    have hCode : encodeWindow params.alphabetSize (c₀ :: tail.dropLast) <
+                  nPow params.alphabetSize (params.windowWidth - 1) := by
+      have := encodeWindow_bound params.alphabetSize hAlpha (c₀ :: tail.dropLast) hWinBound
+      rw [hWinLen] at this; exact this
+    -- Decode the full window code back to `cells` (needed for writeZeroShift's
+    -- `hDecode` precondition, which references the cells via decodeWindow).
+    have hDecodeFull : decodeWindow params.alphabetSize params.windowWidth
+        (encodeWindow params.alphabetSize (c₀ :: tail.dropLast) * params.alphabetSize +
+          tail.getLast htailNe) = c₀ :: tail := by
+      have hWinLen2 : ((c₀ :: tail.dropLast) ++ [tail.getLast htailNe]).length =
+          params.windowWidth := by simp; omega
+      have hWinBound2 : ∀ x, x ∈ ((c₀ :: tail.dropLast) ++ [tail.getLast htailNe]) →
+          x < params.alphabetSize := by
+        intro x hx
+        rcases List.mem_append.mp hx with hl | hr
+        · exact hWinBound x hl
+        · rw [List.mem_singleton] at hr; rw [hr]; exact hLast
+      have h := decodeWindow_encodeWindow params.alphabetSize params.windowWidth
+        ((c₀ :: tail.dropLast) ++ [tail.getLast htailNe]) hWinLen2 hWinBound2 (by omega)
+      rw [encodeWindow_snoc] at h
+      rw [h]; exact hcells_split.symm
+    -- ============== Phase 1 (readScan): w-1 steps ==============
+    have hReadScanLen : tail.dropLast.length + 2 ≤ params.windowWidth := by omega
+    have hReadScan := readScan params hAlpha hWidth c₀ tail.dropLast (tail.getLast htailNe)
+        left right hReadScanLen hC₀ hCInit
+    -- Setup encodeConfig: state in terms of c₀::tail (matches the substituted goal).
+    have hEncode : encodeConfig { left := left, cells := c₀ :: tail, right := right } =
+        { state := 1, left := left, head := c₀, right := tail ++ right } := rfl
+    rw [hEncode, hRightForm]
+    -- Decompose 2(w-1)+mag = (w-1) + ((w-2 + mag) + 1) so the final `+1` lets
+    -- `exactSteps_succ` apply for the lastRead step (which moves L by 1).
+    rw [show 2 * (params.windowWidth - 1) + (params.gsTransition (c₀ :: tail)).shiftMagnitude
+            = (tail.dropLast.length + 1) +
+              ((tail.dropLast.length + (params.gsTransition (c₀ :: tail)).shiftMagnitude) + 1)
+            from by omega]
+    rw [exactSteps_append _ _ _ (tail.dropLast.length + 1) _ hReadScan]
+    -- ============== Phase 2 (lastRead): 1 step ==============
+    have hStep1Eq : tail.dropLast.length + 1 = params.windowWidth - 1 := by omega
+    have hActiveFull : params.gsIsActive
+        (decodeWindow params.alphabetSize params.windowWidth
+          (encodeWindow params.alphabetSize (c₀ :: tail.dropLast) * params.alphabetSize +
+            tail.getLast htailNe)) = true := by
+      rw [hDecodeFull]; exact hActive
+    -- Rewrite goal's left (output of readScan) into cons form via chain_left_form.
+    rw [chain_left_form tail.dropLast c₀ left]
+    -- Rewrite goal's state w-1+1 → w-1 so it matches biTM_step_lastRead's signature.
+    rw [hStep1Eq]
+    -- Apply biTM_step_lastRead in cons form
+    have hLastReadStep := biTM_step_lastRead params hAlpha hWidth
+        (encodeWindow params.alphabetSize (c₀ :: tail.dropLast)) (tail.getLast htailNe)
+        ((c₀ :: tail.dropLast).getLast (List.cons_ne_nil c₀ tail.dropLast))
+        ((c₀ :: tail.dropLast).dropLast.reverse ++ left) right hCode hActiveFull
+    rw [exactSteps_succ _ _ _ _ hLastReadStep]
+    -- ============== Phase 3 (writeLoop with k = w-2): w-2 steps ==============
+    -- writeLoop input state = writeState(k) where k = tail.dropLast.length = w-2.
+    have hWriteLoopLs : (c₀ :: tail.dropLast).dropLast.reverse.length = tail.dropLast.length := by
+      rw [List.length_reverse, List.length_dropLast]
+      simp [List.length_cons]
+    have hCodeFull : encodeWindow params.alphabetSize (c₀ :: tail.dropLast) *
+        params.alphabetSize + tail.getLast htailNe <
+        nPow params.alphabetSize params.windowWidth := by
+      have := code_step_bound params.alphabetSize (params.windowWidth - 1)
+        (encodeWindow params.alphabetSize (c₀ :: tail.dropLast)) (tail.getLast htailNe)
+        hCode hLast hAlpha
+      rw [show params.windowWidth - 1 + 1 = params.windowWidth from by omega] at this
+      exact this
+    have hWriteLoop := writeLoop params hAlpha
+        (encodeWindow params.alphabetSize (c₀ :: tail.dropLast) *
+          params.alphabetSize + tail.getLast htailNe)
+        hCodeFull tail.dropLast.length
+        ((c₀ :: tail.dropLast).getLast (List.cons_ne_nil c₀ tail.dropLast))
+        (c₀ :: tail.dropLast).dropLast.reverse left
+        (getListElem (params.gsTransition
+          (decodeWindow params.alphabetSize params.windowWidth
+            (encodeWindow params.alphabetSize (c₀ :: tail.dropLast) *
+              params.alphabetSize + tail.getLast htailNe))).replacement
+          (params.windowWidth - 1) :: right)
+        hWriteLoopLs (by omega)
+    -- lastRead output state is writeState(w-2). Bridge: w-2 = tail.dropLast.length.
+    rw [show params.windowWidth - 2 = tail.dropLast.length from by omega]
+    rw [exactSteps_append _ _ _ tail.dropLast.length _ hWriteLoop]
+    -- ============== Phase 4 (writeZeroShift): mag steps ==============
+    -- Simplify head via chain_getLastD; bridge right via replAsc_succ_append.
+    rw [chain_getLastD tail.dropLast c₀]
+    -- Replace internal `gsTransition (decodeWindow ...)` with `gsTransition (c₀ :: tail)` via hDecodeFull.
+    -- Then `(params.gsTransition (c₀ :: tail)).replacement = repl` via hRepl.
+    have hReplBridge : (params.gsTransition
+        (decodeWindow params.alphabetSize params.windowWidth
+          (encodeWindow params.alphabetSize (c₀ :: tail.dropLast) *
+            params.alphabetSize + tail.getLast htailNe))).replacement = repl := by
+      rw [hDecodeFull]; exact hRepl
+    rw [hReplBridge]
+    -- replAsc bridge: with k = tail.dropLast.length = w-2,
+    -- replAsc repl (w-1) ++ right = replAsc repl (w-2) ++ (repl[w-1] :: right)
+    rw [show params.windowWidth - 1 = tail.dropLast.length + 1 from by omega]
+    rw [replAsc_succ_append]
+    -- Apply writeZeroShift for mag steps. Output: encodeConfig of shiftBy of [r₀]-view.
+    have hWriteZeroShift := writeZeroShift params hAlpha hWidth
+      (encodeWindow params.alphabetSize (c₀ :: tail.dropLast) *
+        params.alphabetSize + tail.getLast htailNe)
+      hCodeFull (c₀ :: tail) hDecodeFull hActive
+      (getListElem repl 0)
+      (by rw [hRepl])
+      hMag left c₀ (replAsc repl tail.dropLast.length ++
+        (getListElem repl (tail.dropLast.length + 1) :: right))
+    exact hWriteZeroShift
 
 -- ============================================================================
--- General step simulation (all window widths)
+-- decodeConfigPadded: decode a TM config back to a GS config with cells.length
+-- = windowWidth, padding the cells with 0 if the right tape is shorter than
+-- (windowWidth - 1). Symmetric to TM→GS direction's normalized BiTM step
+-- (which post-strips trailing zeros): here we pad on decode rather than strip.
 -- ============================================================================
 
-/-- General step simulation: one GS step = bounded TM steps for any window width.
-    Requires tape-length preconditions to avoid 0-padding mismatch. -/
-theorem stepSimulation (params : GSParams)
+def decodeConfigPadded (windowWidth : Nat) (tmConfig : BiInfiniteTuringMachine.Configuration)
+    : Option GeneralizedShift.Configuration :=
+  if tmConfig.state ≠ 1 then none
+  else
+    let prfx := tmConfig.right.take (windowWidth - 1)
+    let pad := List.replicate (windowWidth - 1 - prfx.length) 0
+    some { left := tmConfig.left,
+           cells := tmConfig.head :: (prfx ++ pad),
+           right := tmConfig.right.drop (windowWidth - 1) }
+
+/-- Static bridge: padded decode of encoded config recovers original cells,
+    when cells.length = w. -/
+private theorem decodeConfigPadded_encodeConfig
+    (w : Nat) (gsConfig : GeneralizedShift.Configuration)
+    (hLen : gsConfig.cells.length = w) (hw : w ≥ 1) :
+    decodeConfigPadded w (encodeConfig gsConfig) = some gsConfig := by
+  cases hc : gsConfig.cells with
+  | nil => rw [hc] at hLen; simp at hLen; omega
+  | cons c cs =>
+    simp only [encodeConfig, hc, decodeConfigPadded]
+    rw [hc] at hLen; simp only [List.length] at hLen
+    have hCsLen : cs.length = w - 1 := by omega
+    have hTake : (cs ++ gsConfig.right).take (w - 1) = cs := List.take_left' hCsLen
+    have hDrop : (cs ++ gsConfig.right).drop (w - 1) = gsConfig.right := List.drop_left' hCsLen
+    rw [hTake, hDrop, hCsLen, Nat.sub_self]
+    simp [List.replicate]
+    obtain ⟨left, _, right⟩ := gsConfig
+    simp only at hc; subst hc
+    rfl
+
+-- ============================================================================
+-- Per-step bridge: decodeConfigPadded ∘ encodeConfig commutes with `shift{Left,Right}One`.
+--
+-- For X with X.cells = [c] (single cell, [c]-view), one shift in the [c]-view
+-- followed by decode equals decode followed by one shift in the multi-cell view.
+-- The padding inside `decodeConfigPadded` reconciles the syntactic differences
+-- (trailing 0s) that arise when the tape is shorter than w-1 on the shift side.
+-- ============================================================================
+
+/-- Per-step bridge for shiftRightOne (deferred). One shift in [c]-view followed
+    by decode equals decode followed by one shift in multi-cell view. The proof
+    is a list-arithmetic case analysis on `right` and on whether `|right| ≥ w-1`,
+    handling the [0]-padding from short tapes. ~80 lines. -/
+private theorem decodePadded_shiftRightOne (w : Nat) (hw : w ≥ 1)
+    (left right : List Nat) (c : Nat) :
+    decodeConfigPadded w (encodeConfig
+      (GeneralizedShift.shiftRightOne { left := left, cells := [c], right := right })) =
+    (decodeConfigPadded w (encodeConfig
+      { left := left, cells := [c], right := right })).map GeneralizedShift.shiftRightOne := by
+  sorry
+
+/-- Per-step bridge for shiftLeftOne (deferred). Symmetric to right case;
+    proof analogous via case analysis on `left`. -/
+private theorem decodePadded_shiftLeftOne (w : Nat) (hw : w ≥ 1)
+    (left right : List Nat) (c : Nat) :
+    decodeConfigPadded w (encodeConfig
+      (GeneralizedShift.shiftLeftOne { left := left, cells := [c], right := right })) =
+    (decodeConfigPadded w (encodeConfig
+      { left := left, cells := [c], right := right })).map GeneralizedShift.shiftLeftOne := by
+  sorry
+
+/-- Full bridge: decoding the encoded shifted [c]-view config equals shifting
+    the multi-cell decode. By induction on `mag` using per-step bridges. -/
+private theorem decodePadded_encodeConfig_shiftBy (w : Nat) (hw : w ≥ 1)
+    (left right : List Nat) (c : Nat) :
+    ∀ (mag : Nat) (dir : Bool),
+    decodeConfigPadded w (encodeConfig (GeneralizedShift.shiftBy
+        { left := left, cells := [c], right := right } mag dir)) =
+    (decodeConfigPadded w (encodeConfig
+        { left := left, cells := [c], right := right })).map
+      (fun X => GeneralizedShift.shiftBy X mag dir) := by
+  intro mag
+  induction mag generalizing left right c with
+  | zero =>
+    intro _dir
+    simp only [GeneralizedShift.shiftBy]
+    cases decodeConfigPadded w (encodeConfig { left := left, cells := [c], right := right }) <;> rfl
+  | succ n ih =>
+    intro dir
+    -- shiftBy X (n+1) dir = shiftBy (shift_dir_one X) n dir
+    simp only [GeneralizedShift.shiftBy]
+    cases hdir : dir with
+    | false =>
+      -- After shiftRightOne, the result has cells.length = 1 (still [c]-view).
+      -- Apply per-step bridge for shiftRightOne, then IH.
+      sorry
+    | true =>
+      -- Symmetric for shiftLeftOne.
+      sorry
+
+/-- Bridge for the chain output: replAsc repl (w-1) is repl.tail when repl.length = w. -/
+private theorem replAsc_eq_tail (repl : List Nat) (w : Nat)
+    (hLen : repl.length = w) (hw : w ≥ 1) :
+    replAsc repl (w - 1) = repl.tail := by
+  sorry
+
+-- ============================================================================
+-- SimulationEncoding (Moore Theorem 8 in conjugation form)
+-- ============================================================================
+
+/-- Moore's Theorem 8 in conjugation form. The decode is `decodeConfigPadded`
+    which absorbs the [0]-phantom from short-tape shifts.
+
+    Hypotheses:
+    - `hLen`: every reachable GS config has cells of length `windowWidth`.
+    - `hShift`: every active window has shift magnitude ≥ 1.
+    - `hRepl`: every active window's replacement has length `windowWidth`.
+    - `hAlpha`: alphabet size ≥ 1.
+    - `hBound`: cells (and replacements of active windows) are bounded by alphabet size.
+    - `hHalt`: inactive GS configs encode to halting TM configs. -/
+def gsToTMSimulationEncoding (params : GSParams)
     (hAlpha : params.alphabetSize ≥ 1)
     (hWidth : params.windowWidth ≥ 1)
-    (hShift : ∀ w, params.gsIsActive w = true → (params.gsTransition w).shiftMagnitude ≥ 1)
+    (hLen : ∀ gsConfig gsConfig',
+      GeneralizedShift.step (gsMachine params) gsConfig = some gsConfig' →
+      gsConfig.cells.length = params.windowWidth)
+    (hShift : ∀ w, params.gsIsActive w = true →
+      (params.gsTransition w).shiftMagnitude ≥ 1)
     (hRepl : ∀ w, params.gsIsActive w = true →
       (params.gsTransition w).replacement.length = params.windowWidth)
-    (hMaxShift : ∀ w, params.gsIsActive w = true →
-      (params.gsTransition w).shiftMagnitude ≤ params.maxShift)
-    (hBound : ∀ w, params.gsIsActive w = true →
-      ∀ x, x ∈ (params.gsTransition w).replacement → x < params.alphabetSize)
-    (gsConfig gsConfig' : GeneralizedShift.Configuration)
-    (hLen : gsConfig.cells.length = params.windowWidth)
-    (hCellBound : ∀ x, x ∈ gsConfig.cells → x < params.alphabetSize)
-    (hStep : GeneralizedShift.step (gsMachine params) gsConfig = some gsConfig') :
-    ∃ n, n ≤ temporalOverhead params ∧
-      BiInfiniteTuringMachine.exactSteps (toBiTM params) (encodeConfig gsConfig) n =
-      some (encodeConfig gsConfig') := by
-  by_cases hw1 : params.windowWidth = 1
-  · exact stepSimulation_w1 params hw1 hShift hRepl hMaxShift gsConfig gsConfig' hLen hStep
-  · -- windowWidth ≥ 2
-    have hWidth2 : params.windowWidth ≥ 2 := by omega
-    obtain ⟨left, cells, right⟩ := gsConfig
-    simp only at hLen hStep hCellBound
-    unfold GeneralizedShift.step gsMachine at hStep
-    simp only at hStep
-    by_cases hActive : params.gsIsActive cells = true
-    · simp only [hActive, not_true, ite_false] at hStep
-      have hStep' := Option.some.inj hStep; subst hStep'
-      have hRL := hRepl cells hActive
-      have hMS := hMaxShift cells hActive
-      have hS := hShift cells hActive
-      refine ⟨2 * (params.windowWidth - 1) + (params.gsTransition cells).shiftMagnitude, ?_, ?_⟩
-      · unfold temporalOverhead; omega
-      · exact fullSim_general params hAlpha hWidth2 cells
-          (params.gsTransition cells).replacement hLen hActive hCellBound rfl hRL
-          (hBound cells hActive) hS left right
-    · rw [if_pos hActive] at hStep
-      exact absurd hStep (by simp)
-
--- ============================================================================
--- Generic Simulation instance (Moore Theorem 8)
--- ============================================================================
-
-/-- Step correspondence lifted from `exactSteps` to `iterationStep`. -/
-theorem gsToTMCommutes (params : GSParams)
-    (hSim : StepSimulation params)
-    (gsConfig gsConfig' : GeneralizedShift.Configuration)
-    (hLen : gsConfig.cells.length = params.windowWidth)
-    (hShift : ∀ w, params.gsIsActive w = true → (params.gsTransition w).shiftMagnitude ≥ 1)
-    (h_step : GeneralizedShift.step (gsMachine params) gsConfig = some gsConfig') :
-    ∃ n, (BiInfiniteTuringMachine.toComputationalMachine (toBiTM params)).iterationStep n
-      (encodeConfig gsConfig) = some (encodeConfig gsConfig') := by
-  have ⟨n, _, hn⟩ := hSim gsConfig gsConfig' hLen hShift h_step
-  exact ⟨n, by rw [BiInfiniteTuringMachine.iterationStep_eq_exactSteps]; exact hn⟩
-
-/-- Moore's Theorem 8: a Turing machine simulates any generalized shift.
-    Hypotheses:
-    - `hSim`: step simulation for configs with correct window width and positive shifts
-    - `hLen`: all configs have the correct window width (invariant)
-    - `hShift`: all active windows have shift magnitude ≥ 1
-    - `hHalt`: inactive GS configs encode to halting TM configs -/
-def gsToTMSimulation (params : GSParams)
-    (hSim : StepSimulation params)
-    (hLen : ∀ gsConfig gsConfig', GeneralizedShift.step (gsMachine params) gsConfig = some gsConfig' →
-      gsConfig.cells.length = params.windowWidth)
-    (hShift : ∀ w, params.gsIsActive w = true → (params.gsTransition w).shiftMagnitude ≥ 1)
-    (hHalt : ∀ gsConfig, GeneralizedShift.step (gsMachine params) gsConfig = none →
-      ComputationalMachine.Halts (BiInfiniteTuringMachine.toComputationalMachine (toBiTM params))
+    (hCellBoundAll : ∀ gsConfig gsConfig',
+      GeneralizedShift.step (gsMachine params) gsConfig = some gsConfig' →
+      ∀ x, x ∈ gsConfig.cells → x < params.alphabetSize)
+    (hHalt : ∀ gsConfig,
+      GeneralizedShift.step (gsMachine params) gsConfig = none →
+      ComputationalMachine.Halts
+        (BiInfiniteTuringMachine.toComputationalMachine (toBiTM params))
         (encodeConfig gsConfig)) :
-    ComputationalMachine.Simulation
+    ComputationalMachine.SimulationEncoding
       (BiInfiniteTuringMachine.toComputationalMachine (toBiTM params))
       (GeneralizedShift.toComputationalMachine (gsMachine params)) where
   encode := encodeConfig
-  commutes := by intro config config' h; sorry
-  halting := by intro config h; sorry
+  decode := decodeConfigPadded params.windowWidth
+  commutes := by
+    intro b b' h_step
+    -- Use fullSim_general_cView for w ≥ 2 and fullSim_w1 for w = 1, then bridge via decodeConfigPadded.
+    sorry
+  halting := by
+    intro b h_step; exact hHalt b h_step
 
 end GeneralizedShiftToTuringMachine
