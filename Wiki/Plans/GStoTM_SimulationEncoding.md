@@ -39,29 +39,15 @@ A padded decode `decodeConfigPadded w` (which pads cells with `0` to width `w` w
              right := tmConfig.right.drop (windowWidth - 1) }
   ```
 
-- [ ] **Step 3 — Per-step bridge.** For any `[c]`-view config `X` with `X.cells.length = 1`:
-  ```
-  decodeConfigPadded w (encodeConfig (shiftRightOne X)) = 
-    (decodeConfigPadded w (encodeConfig X)).map shiftRightOne
-  ```
-  And the symmetric for `shiftLeftOne`. Case analysis on tape lengths × direction. ~30–60 lines.
+- [x] **Step 3 — Per-step bridge.** ✅ `decodePadded_shiftRightOne` (unconditional) and `decodePadded_shiftLeftOne` (with precondition `right.length ≥ w-1`) discharged on 2026-05-01. shiftLeft requires the precondition because multi-cell shiftLeft pushes the rightmost cell (possibly a padding 0) onto the right tape, while [c]-view shiftLeft pushes the original `c`. The precondition is preserved by shiftLeft (which only grows the right tape).
 
-- [ ] **Step 4 — Induction-on-`mag` to get full bridge:**
-  ```
-  decodeConfigPadded w (encodeConfig (shiftBy {left, [c], cs ++ right} mag dir)) = 
-    some (shiftBy {left, c::cs, right} mag dir)
-  ```
-  when `cs.length = w-1`. Plus a small `replAsc_eq_tail` lemma.
+- [x] **Step 4 — Induction-on-`mag` to get full bridge.** ✅ `decodePadded_shiftByRight` (unconditional) and `decodePadded_shiftByLeft` (with precondition) proved by induction on mag, chaining via `Option.map_map`. Plus `replAsc_eq_tail` discharged via helper `replAsc_cons_eq_take`.
 
-- [ ] **Step 5 — Build `gsToTMSimulationEncoding`.** A `SimulationEncoding`:
-  - `encode := encodeConfig`
-  - `decode := decodeConfigPadded params.windowWidth`
-  - `commutes := <use chain + bridge>`
-  - `halting := hHalt` (existing form)
+- [x] **Step 5 — Build `gsToTMSimulationEncoding`.** ✅ Discharged. Branches on w=1 (uses `fullSim_w1` + bridges) vs w≥2 (uses `fullSim_general_cView` + bridges + `replAsc_eq_tail`). Closure: `[propext, Quot.sound, Classical.choice]`.
 
-- [x] **Step 6 — Update `Edges.lean` `edge_GStoTM`.** ✅ Returns `SimulationEncoding`; registry's `claimShape := .simulationEncoding`. Notes updated.
+- [x] **Step 6 — Update `Edges.lean` `edge_GStoTM`.** ✅ Returns `SimulationEncoding`; registry's `claimShape := .simulationEncoding`. Notes updated to reflect full discharge.
 
-- [ ] **Step 7 — Verify.** Build passes; integrity check reports `fullSim_general_cView` axioms = `[]` (clean). `gsToTMSimulationEncoding` still tracked with `sorryAx` (deferred bridge).
+- [x] **Step 7 — Verify.** ✅ Build passes; integrity check reports `fullSim_general_cView: []` (clean) and `gsToTMSimulationEncoding: [propext, Quot.sound, Classical.choice]` (clean — no sorryAx). Sorry count: 2 (only pre-existing in TagSystemToCTS and CockeMinsky, unchanged).
 
 ## Why this fits the framework
 
@@ -99,3 +85,4 @@ The chain proof itself is a standard composition via `exactSteps_append`, but th
 |---|---|---|
 | 2026-05-01 | LLM | Created plan; identified `decodeConfigPadded` approach; began chain proof, hit tactic-engineering friction on right-tape rewrite, deferred to scheduled session. |
 | 2026-05-01 | LLM | Resumed in dedicated session. Refactored `writeLoop` to uniform k-step form (eliminates w=2 vs w≥3 split). Added `chain_left_form` + `chain_getLastD` helpers. Discharged `fullSim_general_cView` fully (0 sorry, axiom closure `[]`). Defined `decodeConfigPadded` and proved static bridge. Stubbed per-step bridges and full bridge with `sorry`; struggled with Lean tactic engineering of the case analysis (multi-cell vs [c]-view shifts diverge by trailing-0 padding which `decodeConfigPadded` reconciles, but `Configuration` lacking `[ext]` made `congr 1; ext1` paths messy). Updated `edge_GStoTM` to `SimulationEncoding` shape; registry `claimShape := .simulationEncoding`. Build passes; `Integrity` check reports `fullSim_general_cView : []` (no propext, no choice, no sorry) and `gsToTMSimulationEncoding : [propext, sorryAx]` (sorryAx tracked from the deferred bridge). Stopping per max-3-attempts rule on bridge tactic engineering. |
+| 2026-05-01 | LLM | Resumed; user asked to push and finish. Realized the per-step bridge for shiftLeft does NOT hold unconditionally — multi-cell shiftLeft pushes a padding-0 to the right tape when the right is short, while [c]-view shiftLeft pushes the original `c`. Added precondition `right.length ≥ w-1` (preserved by shiftLeft, which only grows right). Proved `decodePadded_shiftRightOne` (unconditional) using helper rfl-lemmas `shiftRightOne_singleton_{nil,cons}` + `shiftRightOne_cons_{nil,cons}` and key list lemmas `List.dropLast_concat`, `List.getLastD_concat`, `List.take_succ_eq_append_getElem`, `List.drop_eq_getElem_cons`. Added `decodePadded_proper_form` helper (decode without padding when right.length ≥ w-1). Proved `decodePadded_shiftLeftOne` cleanly using this. Proved full bridges `decodePadded_shiftByRight` / `decodePadded_shiftByLeft` by induction on mag, chaining via `Option.map_map`. Proved `replAsc_eq_tail` via helper `replAsc_cons_eq_take`. Discharged `gsToTMSimulationEncoding.commutes` with explicit witnesses (no `set`/`convert`/`by_contra` — these aren't in core Lean). Build passes with axiom closure `[propext, Quot.sound, Classical.choice]` (NO sorryAx). `EDGE AUDIT: PASS (10 edges)`. Sorry count unchanged at 2 (pre-existing, unrelated). |

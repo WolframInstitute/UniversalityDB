@@ -1534,62 +1534,383 @@ private theorem decodeConfigPadded_encodeConfig
 -- (trailing 0s) that arise when the tape is shorter than w-1 on the shift side.
 -- ============================================================================
 
-/-- Per-step bridge for shiftRightOne (deferred). One shift in [c]-view followed
-    by decode equals decode followed by one shift in multi-cell view. The proof
-    is a list-arithmetic case analysis on `right` and on whether `|right| ≥ w-1`,
-    handling the [0]-padding from short tapes. ~80 lines. -/
+/-- Helper: shiftRightOne on a [c]-view config, right-tape empty case. -/
+private theorem shiftRightOne_singleton_nil (left : List Nat) (c : Nat) :
+    GeneralizedShift.shiftRightOne { left := left, cells := [c], right := [] } =
+    { left := c :: left, cells := [0], right := [] } := rfl
+
+/-- Helper: shiftRightOne on a [c]-view config, right-tape cons case. -/
+private theorem shiftRightOne_singleton_cons (left rs : List Nat) (c r : Nat) :
+    GeneralizedShift.shiftRightOne { left := left, cells := [c], right := r :: rs } =
+    { left := c :: left, cells := [r], right := rs } := rfl
+
+/-- Helper: shiftRightOne on a (c :: cs)-view config, right-tape empty case. -/
+private theorem shiftRightOne_cons_nil (left cs : List Nat) (c : Nat) :
+    GeneralizedShift.shiftRightOne { left := left, cells := c :: cs, right := [] } =
+    { left := c :: left, cells := cs ++ [0], right := [] } := rfl
+
+/-- Helper: shiftRightOne on a (c :: cs)-view config, right-tape cons case. -/
+private theorem shiftRightOne_cons_cons (left cs rs : List Nat) (c r : Nat) :
+    GeneralizedShift.shiftRightOne { left := left, cells := c :: cs, right := r :: rs } =
+    { left := c :: left, cells := cs ++ [r], right := rs } := rfl
+
+/-- Helper: shiftLeftOne on a [c]-view config, left-tape empty case. -/
+private theorem shiftLeftOne_singleton_nil (right : List Nat) (c : Nat) :
+    GeneralizedShift.shiftLeftOne { left := [], cells := [c], right := right } =
+    { left := [], cells := [0], right := c :: right } := rfl
+
+/-- Helper: shiftLeftOne on a [c]-view config, left-tape cons case. -/
+private theorem shiftLeftOne_singleton_cons (ls right : List Nat) (l c : Nat) :
+    GeneralizedShift.shiftLeftOne { left := l :: ls, cells := [c], right := right } =
+    { left := ls, cells := [l], right := c :: right } := rfl
+
+/-- Helper: shiftLeftOne on a multi-cell config (cells = c :: cs), left-tape empty.
+    Reduces by `rfl` because the structure is concrete. -/
+private theorem shiftLeftOne_cons_nil (cs right : List Nat) (c : Nat) :
+    GeneralizedShift.shiftLeftOne { left := [], cells := c :: cs, right := right } =
+    { left := [], cells := 0 :: (c :: cs).dropLast,
+      right := (c :: cs).getLastD 0 :: right } := rfl
+
+/-- Helper: shiftLeftOne on a multi-cell config (cells = c :: cs), left-tape cons.
+    Reduces by `rfl` because the structure is concrete. -/
+private theorem shiftLeftOne_cons_cons (ls right cs : List Nat) (l c : Nat) :
+    GeneralizedShift.shiftLeftOne { left := l :: ls, cells := c :: cs, right := right } =
+    { left := ls, cells := l :: (c :: cs).dropLast,
+      right := (c :: cs).getLastD 0 :: right } := rfl
+
+/-- Helper: encodeConfig on a [c]-view config. -/
+private theorem encodeConfig_singleton (left right : List Nat) (c : Nat) :
+    encodeConfig { left := left, cells := [c], right := right } =
+    { state := 1, left := left, head := c, right := right } := by
+  simp [encodeConfig]
+
+/-- Helper: decodeConfigPadded on a state=1 TM config in computed form. -/
+private theorem decodeConfigPadded_state1
+    (w : Nat) (left right : List Nat) (head : Nat) :
+    decodeConfigPadded w
+        { state := 1, left := left, head := head, right := right } =
+      some { left := left,
+             cells := head :: (right.take (w - 1)
+                ++ List.replicate (w - 1 - (right.take (w - 1)).length) 0),
+             right := right.drop (w - 1) } := by
+  simp [decodeConfigPadded]
+
+/-- Helper: when `right.length ≥ w-1`, the padding is empty so decodePadded
+    reduces to the simple "no padding" form. -/
+private theorem decodePadded_proper_form (w : Nat)
+    (left right : List Nat) (head : Nat) (hLen : right.length ≥ w - 1) :
+    decodeConfigPadded w
+        { state := 1, left := left, head := head, right := right } =
+      some { left := left,
+             cells := head :: right.take (w - 1),
+             right := right.drop (w - 1) } := by
+  rw [decodeConfigPadded_state1]
+  have hTakeLen : (right.take (w - 1)).length = w - 1 := by
+    rw [List.length_take]; omega
+  rw [hTakeLen, Nat.sub_self]
+  simp [List.replicate]
+
+/-- Per-step bridge for shiftRightOne. One shift in [c]-view followed by decode
+    equals decode followed by one shift in multi-cell view. List-arithmetic case
+    analysis on `right` and on whether `|right| ≥ w-1`, handling the [0]-padding
+    from short tapes. -/
 private theorem decodePadded_shiftRightOne (w : Nat) (hw : w ≥ 1)
     (left right : List Nat) (c : Nat) :
     decodeConfigPadded w (encodeConfig
       (GeneralizedShift.shiftRightOne { left := left, cells := [c], right := right })) =
     (decodeConfigPadded w (encodeConfig
       { left := left, cells := [c], right := right })).map GeneralizedShift.shiftRightOne := by
-  sorry
+  obtain ⟨k, rfl⟩ : ∃ k, w = k + 1 := ⟨w - 1, by omega⟩
+  -- Throughout: w - 1 = k, w = k + 1.
+  cases right with
+  | nil =>
+    -- Both sides reduce to some {c::left, replicate (k+1) 0, []}.
+    rw [shiftRightOne_singleton_nil, encodeConfig_singleton,
+        encodeConfig_singleton, decodeConfigPadded_state1, decodeConfigPadded_state1]
+    simp only [List.take_nil, List.drop_nil, List.length_nil, Nat.sub_zero,
+               Option.map_some]
+    congr 1
+    -- Goal: cell-eq: {c::left, 0::replicate k 0, []} = shiftRightOne {left, c::replicate k 0, []}
+    show ({ left := c :: left, cells := 0 :: List.replicate k 0, right := [] }
+            : GeneralizedShift.Configuration) =
+         GeneralizedShift.shiftRightOne
+           { left := left, cells := c :: List.replicate k 0, right := [] }
+    -- Compute shiftRightOne on the right
+    -- cells = c :: replicate k 0 → newLeft = c :: left, tail = replicate k 0
+    -- right = [] → cells_new = replicate k 0 ++ [0]
+    show _ = ({ left := c :: left, cells := List.replicate k 0 ++ [0], right := [] }
+              : GeneralizedShift.Configuration)
+    congr 1
+    -- 0 :: replicate k 0 = replicate k 0 ++ [0]
+    rw [show (0 :: List.replicate k 0) = List.replicate (k + 1) 0 from rfl,
+        List.replicate_succ']
+  | cons r rs =>
+    -- LHS: shiftRightOne {left, [c], r::rs} = {c::left, [r], rs}
+    --       encode → {1, c::left, r, rs}, decodePadded → some {c::left, r :: (rs.take k ++ pad), rs.drop k}
+    --       where pad = replicate (k - rs.take k.length) 0.
+    -- RHS: encode → {1, left, c, r::rs}, decodePadded → some {left, c :: ((r::rs).take k ++ pad'), (r::rs).drop k}
+    --       where pad' = replicate (k - (r::rs).take k.length) 0.
+    --       Then shiftRightOne {left, c :: ..., (r::rs).drop k}:
+    --         newLeft = c :: left, tail = (r::rs).take k ++ pad'
+    --         match (r::rs).drop k: case-split.
+    rw [shiftRightOne_singleton_cons, encodeConfig_singleton,
+        encodeConfig_singleton, decodeConfigPadded_state1, decodeConfigPadded_state1]
+    simp only [Option.map_some]
+    cases k with
+    | zero =>
+      -- w = 1: [c]-view = multi-cell view; trivial.
+      simp only [Nat.add_sub_cancel, List.take_zero, List.drop_zero,
+                 List.length_nil, Nat.sub_zero, List.replicate, List.append_nil]
+      rfl
+    | succ k' =>
+      -- w ≥ 2.
+      simp only [Nat.add_sub_cancel, List.take_succ_cons, List.drop_succ_cons,
+                 List.length_cons]
+      -- Now unfold the outer shiftRightOne on the RHS
+      -- cells_RHS_input = c :: (r :: rs.take k' ++ pad')
+      -- where pad' = replicate (k' + 1 - (r :: rs.take k').length) 0
+      --             = replicate (k' + 1 - (1 + rs.take k'.length)) 0
+      --             = replicate (k' - rs.take k'.length) 0
+      -- Need to reduce shiftRightOne. The cells_RHS_input is `c :: ...`, so newLeft = c :: left,
+      -- tail = r :: rs.take k' ++ pad'.
+      -- The right field is rs.drop k'. Case split.
+      cases hrs : rs.drop k' with
+      | nil =>
+        -- rs.length ≤ k'.
+        have hRsLen : rs.length ≤ k' := List.drop_eq_nil_iff.mp hrs
+        rw [List.take_of_length_le hRsLen,
+            List.take_of_length_le (by omega : rs.length ≤ k' + 1),
+            List.drop_of_length_le (by omega : rs.length ≤ k' + 1),
+            shiftRightOne_cons_nil]
+        -- Goal: some {c::left, r :: (rs ++ replicate (k'+1-rs.length) 0), []} =
+        --       some {c::left, (r :: rs ++ replicate (k'+1-(rs.length+1)) 0) ++ [0], []}
+        congr 2
+        -- Goal: r :: (rs ++ replicate (k'+1-rs.length) 0) =
+        --       (r :: rs ++ replicate (k'+1-(rs.length+1)) 0) ++ [0]
+        rw [show k' + 1 - rs.length = (k' - rs.length) + 1 from by omega,
+            show k' + 1 - (rs.length + 1) = k' - rs.length from by omega,
+            List.replicate_succ']
+        simp [List.append_assoc]
+      | cons r' rs' =>
+        -- rs.length ≥ k' + 1.
+        have hRsDrop : rs.drop k' ≠ [] := by rw [hrs]; exact List.cons_ne_nil _ _
+        have hRsLenGT : k' < rs.length := by
+          rcases Nat.lt_or_ge k' rs.length with h | h
+          · exact h
+          · exact absurd (List.drop_of_length_le h) hRsDrop
+        have hTakeK' : (rs.take k').length = k' := by
+          rw [List.length_take]; omega
+        -- rs[k'] = r' (from hrs).
+        have hGet : rs[k']'hRsLenGT = r' := by
+          have := List.drop_eq_getElem_cons (l := rs) (i := k') hRsLenGT
+          rw [hrs] at this
+          exact ((List.cons.injEq _ _ _ _).mp this |>.1).symm
+        -- rs.take (k'+1) = rs.take k' ++ [r']
+        have hTakeKK : rs.take (k' + 1) = rs.take k' ++ [r'] := by
+          rw [List.take_succ_eq_append_getElem hRsLenGT, hGet]
+        -- rs.drop (k'+1) = rs'
+        have hDropKK : rs.drop (k' + 1) = rs' := by
+          have := List.drop_eq_getElem_cons (l := rs) (i := k') hRsLenGT
+          rw [hrs, hGet] at this
+          exact (List.cons.injEq _ _ _ _).mp this.symm |>.2
+        rw [hTakeKK, hDropKK, shiftRightOne_cons_cons]
+        -- Goal: some {c::left, r :: (rs.take k' ++ [r'] ++ replicate (k'+1 - (rs.take k' ++ [r']).length) 0), rs'} =
+        --       some {c::left, (r :: rs.take k' ++ replicate (k'+1 - (rs.take k'.length+1)) 0) ++ [r'], rs'}
+        rw [show ((rs.take k' ++ [r']).length) = k' + 1 from by simp [hTakeK']]
+        rw [Nat.sub_self, hTakeK']
+        rw [show k' + 1 - (k' + 1) = 0 from by omega]
+        simp [List.replicate]
 
-/-- Per-step bridge for shiftLeftOne (deferred). Symmetric to right case;
-    proof analogous via case analysis on `left`. -/
+/-- Per-step bridge for shiftLeftOne. Requires `right.length ≥ w - 1` because
+    multi-cell shiftLeft pushes the rightmost cell (which may be a padding 0
+    when the right tape is short) onto the right tape, while [c]-view shiftLeft
+    pushes the original `c`. The two only agree when there is no padding —
+    equivalent to `right.length ≥ w - 1`. The precondition is preserved by
+    shiftLeft (which only grows the right tape), so it propagates through the
+    `shiftBy mag true` induction. -/
 private theorem decodePadded_shiftLeftOne (w : Nat) (hw : w ≥ 1)
-    (left right : List Nat) (c : Nat) :
+    (left right : List Nat) (c : Nat) (hRightLen : right.length ≥ w - 1) :
     decodeConfigPadded w (encodeConfig
       (GeneralizedShift.shiftLeftOne { left := left, cells := [c], right := right })) =
     (decodeConfigPadded w (encodeConfig
       { left := left, cells := [c], right := right })).map GeneralizedShift.shiftLeftOne := by
-  sorry
+  obtain ⟨k, rfl⟩ : ∃ k, w = k + 1 := ⟨w - 1, by omega⟩
+  simp only [Nat.add_sub_cancel] at hRightLen
+  -- The key insight: with hRightLen, both sides reduce to the same explicit form
+  -- via `decodePadded_proper_form`.
+  -- LHS path: shiftLeft cView produces a [c]-view with new right tape = c :: right
+  --   (length = right.length + 1 ≥ k + 1 ≥ k). Apply `decodePadded_proper_form`.
+  -- RHS path: decodePadded original gives multi-cell view (using `decodePadded_proper_form`).
+  --   Then apply shiftLeft_multi.
+  cases left with
+  | nil =>
+    rw [shiftLeftOne_singleton_nil, encodeConfig_singleton, encodeConfig_singleton]
+    rw [decodePadded_proper_form (k + 1) [] (c :: right) 0
+          (by simp; omega),
+        decodePadded_proper_form (k + 1) [] right c
+          (by simp; omega)]
+    simp only [Option.map_some, Nat.add_sub_cancel]
+    cases k with
+    | zero =>
+      simp only [List.take_zero, List.drop_zero]
+      rfl
+    | succ k' =>
+      have hKLt : k' < right.length := by omega
+      simp only [List.take_succ_cons, List.drop_succ_cons]
+      rw [shiftLeftOne_cons_nil]
+      -- Rewrite right.take (k'+1) = right.take k' ++ [right[k']] to expose dropLast/getLastD.
+      rw [List.take_succ_eq_append_getElem hKLt]
+      rw [show c :: (right.take k' ++ [right[k']'hKLt])
+           = (c :: right.take k') ++ [right[k']'hKLt] from rfl]
+      rw [List.dropLast_concat, List.getLastD_concat]
+      rw [(List.drop_eq_getElem_cons hKLt).symm]
+  | cons l ls =>
+    rw [shiftLeftOne_singleton_cons, encodeConfig_singleton, encodeConfig_singleton]
+    rw [decodePadded_proper_form (k + 1) ls (c :: right) l
+          (by simp; omega),
+        decodePadded_proper_form (k + 1) (l :: ls) right c
+          (by simp; omega)]
+    simp only [Option.map_some, Nat.add_sub_cancel]
+    cases k with
+    | zero =>
+      simp only [List.take_zero, List.drop_zero]
+      rfl
+    | succ k' =>
+      have hKLt : k' < right.length := by omega
+      simp only [List.take_succ_cons, List.drop_succ_cons]
+      rw [shiftLeftOne_cons_cons]
+      rw [List.take_succ_eq_append_getElem hKLt]
+      rw [show c :: (right.take k' ++ [right[k']'hKLt])
+           = (c :: right.take k') ++ [right[k']'hKLt] from rfl]
+      rw [List.dropLast_concat, List.getLastD_concat]
+      rw [(List.drop_eq_getElem_cons hKLt).symm]
 
-/-- Full bridge: decoding the encoded shifted [c]-view config equals shifting
-    the multi-cell decode. By induction on `mag` using per-step bridges. -/
-private theorem decodePadded_encodeConfig_shiftBy (w : Nat) (hw : w ≥ 1)
-    (left right : List Nat) (c : Nat) :
-    ∀ (mag : Nat) (dir : Bool),
+/-- Full bridge for shiftRight: by induction on `mag` using `decodePadded_shiftRightOne`.
+    Unconditional — works for any [c]-view. -/
+private theorem decodePadded_shiftByRight (w : Nat) (hw : w ≥ 1) :
+    ∀ (mag : Nat) (left right : List Nat) (c : Nat),
     decodeConfigPadded w (encodeConfig (GeneralizedShift.shiftBy
-        { left := left, cells := [c], right := right } mag dir)) =
+        { left := left, cells := [c], right := right } mag false)) =
     (decodeConfigPadded w (encodeConfig
         { left := left, cells := [c], right := right })).map
-      (fun X => GeneralizedShift.shiftBy X mag dir) := by
+      (fun X => GeneralizedShift.shiftBy X mag false) := by
   intro mag
-  induction mag generalizing left right c with
+  induction mag with
   | zero =>
-    intro _dir
+    intro left right c
     simp only [GeneralizedShift.shiftBy]
-    cases decodeConfigPadded w (encodeConfig { left := left, cells := [c], right := right }) <;> rfl
+    cases decodeConfigPadded w (encodeConfig
+      { left := left, cells := [c], right := right }) <;> rfl
   | succ n ih =>
-    intro dir
-    -- shiftBy X (n+1) dir = shiftBy (shift_dir_one X) n dir
+    intro left right c
+    -- shiftBy X (n+1) false = shiftBy (shiftRightOne X) n false.
+    -- Apply per-step bridge: decodePadded ∘ encode ∘ shiftRightOne = .map shiftRightOne ∘ decodePadded ∘ encode.
+    -- Then ih on the original X (not shiftRightOne X), composing with shiftRightOne.
+    show decodeConfigPadded w (encodeConfig (GeneralizedShift.shiftBy
+            (GeneralizedShift.shiftRightOne
+              { left := left, cells := [c], right := right }) n false)) = _
+    cases right with
+    | nil =>
+      rw [show GeneralizedShift.shiftRightOne { left := left, cells := [c], right := [] }
+            = { left := c :: left, cells := [0], right := [] } from rfl]
+      rw [ih (c :: left) [] 0]
+      rw [show decodeConfigPadded w (encodeConfig
+              { left := c :: left, cells := [0], right := [] })
+            = decodeConfigPadded w (encodeConfig (GeneralizedShift.shiftRightOne
+                { left := left, cells := [c], right := [] })) from rfl]
+      rw [decodePadded_shiftRightOne w hw left [] c]
+      rw [Option.map_map]
+      rfl
+    | cons r rs =>
+      rw [show GeneralizedShift.shiftRightOne
+              { left := left, cells := [c], right := r :: rs }
+            = { left := c :: left, cells := [r], right := rs } from rfl]
+      rw [ih (c :: left) rs r]
+      rw [show decodeConfigPadded w (encodeConfig
+              { left := c :: left, cells := [r], right := rs })
+            = decodeConfigPadded w (encodeConfig (GeneralizedShift.shiftRightOne
+                { left := left, cells := [c], right := r :: rs })) from rfl]
+      rw [decodePadded_shiftRightOne w hw left (r :: rs) c]
+      rw [Option.map_map]
+      rfl
+
+/-- Full bridge for shiftLeft: by induction on `mag` using `decodePadded_shiftLeftOne`.
+    Requires `right.length ≥ w - 1` (preserved by shiftLeft, which only grows right). -/
+private theorem decodePadded_shiftByLeft (w : Nat) (hw : w ≥ 1) :
+    ∀ (mag : Nat) (left right : List Nat) (c : Nat), right.length ≥ w - 1 →
+    decodeConfigPadded w (encodeConfig (GeneralizedShift.shiftBy
+        { left := left, cells := [c], right := right } mag true)) =
+    (decodeConfigPadded w (encodeConfig
+        { left := left, cells := [c], right := right })).map
+      (fun X => GeneralizedShift.shiftBy X mag true) := by
+  intro mag
+  induction mag with
+  | zero =>
+    intro left right c _
     simp only [GeneralizedShift.shiftBy]
-    cases hdir : dir with
-    | false =>
-      -- After shiftRightOne, the result has cells.length = 1 (still [c]-view).
-      -- Apply per-step bridge for shiftRightOne, then IH.
-      sorry
-    | true =>
-      -- Symmetric for shiftLeftOne.
-      sorry
+    cases decodeConfigPadded w (encodeConfig
+      { left := left, cells := [c], right := right }) <;> rfl
+  | succ n ih =>
+    intro left right c hRightLen
+    show decodeConfigPadded w (encodeConfig (GeneralizedShift.shiftBy
+            (GeneralizedShift.shiftLeftOne
+              { left := left, cells := [c], right := right }) n true)) = _
+    cases left with
+    | nil =>
+      rw [show GeneralizedShift.shiftLeftOne { left := [], cells := [c], right := right }
+            = { left := [], cells := [0], right := c :: right } from rfl]
+      rw [ih [] (c :: right) 0 (by simp; omega)]
+      rw [show decodeConfigPadded w (encodeConfig
+              { left := [], cells := [0], right := c :: right })
+            = decodeConfigPadded w (encodeConfig (GeneralizedShift.shiftLeftOne
+                { left := [], cells := [c], right := right })) from rfl]
+      rw [decodePadded_shiftLeftOne w hw [] right c hRightLen]
+      rw [Option.map_map]
+      rfl
+    | cons l ls =>
+      rw [show GeneralizedShift.shiftLeftOne { left := l :: ls, cells := [c], right := right }
+            = { left := ls, cells := [l], right := c :: right } from rfl]
+      rw [ih ls (c :: right) l (by simp; omega)]
+      rw [show decodeConfigPadded w (encodeConfig
+              { left := ls, cells := [l], right := c :: right })
+            = decodeConfigPadded w (encodeConfig (GeneralizedShift.shiftLeftOne
+                { left := l :: ls, cells := [c], right := right })) from rfl]
+      rw [decodePadded_shiftLeftOne w hw (l :: ls) right c hRightLen]
+      rw [Option.map_map]
+      rfl
+
+/-- Helper: getListElem of a cons list at a successor index reduces to the
+    list's element at the predecessor index (when in range). -/
+private theorem getListElem_cons_succ (a : Nat) (as : List Nat) (n : Nat)
+    (h : n < as.length) :
+    getListElem (a :: as) (n + 1) = as[n]'h := by
+  simp [getListElem, List.getElem?_eq_getElem h]
+
+/-- Helper: replAsc on `a :: as` for k ≤ as.length yields `as.take k`. -/
+private theorem replAsc_cons_eq_take (a : Nat) (as : List Nat) :
+    ∀ (k : Nat), k ≤ as.length → replAsc (a :: as) k = as.take k := by
+  intro k
+  induction k with
+  | zero => intro _; simp [replAsc]
+  | succ n ih =>
+    intro hk
+    have hn : n ≤ as.length := by omega
+    have hLt : n < as.length := by omega
+    show replAsc (a :: as) n ++ [getListElem (a :: as) (n + 1)] = as.take (n + 1)
+    rw [ih hn, getListElem_cons_succ a as n hLt,
+        List.take_succ_eq_append_getElem hLt]
 
 /-- Bridge for the chain output: replAsc repl (w-1) is repl.tail when repl.length = w. -/
 private theorem replAsc_eq_tail (repl : List Nat) (w : Nat)
     (hLen : repl.length = w) (hw : w ≥ 1) :
     replAsc repl (w - 1) = repl.tail := by
-  sorry
+  cases repl with
+  | nil => simp at hLen; omega
+  | cons r₀ rs =>
+    simp only [List.tail_cons, List.length_cons] at *
+    have : w - 1 = rs.length := by omega
+    rw [this, replAsc_cons_eq_take r₀ rs rs.length (Nat.le_refl _),
+        List.take_length]
 
 -- ============================================================================
 -- SimulationEncoding (Moore Theorem 8 in conjugation form)
@@ -1630,8 +1951,144 @@ def gsToTMSimulationEncoding (params : GSParams)
   decode := decodeConfigPadded params.windowWidth
   commutes := by
     intro b b' h_step
-    -- Use fullSim_general_cView for w ≥ 2 and fullSim_w1 for w = 1, then bridge via decodeConfigPadded.
-    sorry
+    -- Save useful facts before unfolding.
+    have hLenB : b.cells.length = params.windowWidth := hLen b b' h_step
+    have hCellBoundB : ∀ x, x ∈ b.cells → x < params.alphabetSize :=
+      hCellBoundAll b b' h_step
+    -- Now extract the step structure.
+    change GeneralizedShift.step (gsMachine params) b = some b' at h_step
+    -- Determine activity.
+    have hAct : params.gsIsActive b.cells = true := by
+      cases hX : params.gsIsActive b.cells with
+      | true => rfl
+      | false =>
+        exfalso
+        unfold GeneralizedShift.step gsMachine at h_step
+        simp only [hX, Bool.false_eq_true, not_false_eq_true, ↓reduceIte] at h_step
+        cases h_step
+    have hReplLen' : (params.gsTransition b.cells).replacement.length = params.windowWidth :=
+      hRepl b.cells hAct
+    have hMagB : (params.gsTransition b.cells).shiftMagnitude ≥ 1 := hShift b.cells hAct
+    -- Compute b' from h_step.
+    have hb'Eq : b' = GeneralizedShift.shiftBy
+        { b with cells := (params.gsTransition b.cells).replacement }
+        (params.gsTransition b.cells).shiftMagnitude
+        (params.gsTransition b.cells).shiftLeft := by
+      unfold GeneralizedShift.step gsMachine at h_step
+      simp only [hAct, not_true_eq_false, ↓reduceIte] at h_step
+      exact (Option.some.inj h_step).symm
+    -- Decompose b for cleanliness.
+    obtain ⟨b_left, b_cells, b_right⟩ := b
+    simp only at hLenB hAct hReplLen' hMagB hCellBoundB hb'Eq
+    -- Branch on w = 1 vs w ≥ 2.
+    by_cases hw1 : params.windowWidth = 1
+    case pos =>
+      -- w = 1: cells must be [c]. Replacement must be [r]. Use fullSim_w1.
+      rw [hw1] at hLenB hReplLen'
+      cases b_cells with
+      | nil => simp at hLenB
+      | cons c rest =>
+        cases rest with
+        | cons _ _ => simp at hLenB
+        | nil =>
+          -- b_cells = [c]
+          cases hrep : (params.gsTransition [c]).replacement with
+          | nil => rw [hrep] at hReplLen'; simp at hReplLen'
+          | cons r rest =>
+            cases rest with
+            | cons _ _ => rw [hrep] at hReplLen'; simp at hReplLen'
+            | nil =>
+              -- replacement = [r]
+              refine ⟨(params.gsTransition [c]).shiftMagnitude,
+                      encodeConfig (GeneralizedShift.shiftBy
+                        { left := b_left, cells := [r], right := b_right }
+                        (params.gsTransition [c]).shiftMagnitude
+                        (params.gsTransition [c]).shiftLeft), ?_, ?_⟩
+              · rw [BiInfiniteTuringMachine.iterationStep_eq_exactSteps]
+                simp only [encodeConfig]
+                exact fullSim_w1 params c r hw1 hAct hrep hMagB b_left b_right
+              · -- Bridge.
+                rw [hb'Eq, hrep]
+                -- b' = shiftBy {b_left, [r], b_right} mag dir.
+                -- For w = 1, the bridge applies; decodePadded_proper_form simplifies.
+                cases hDir : (params.gsTransition [c]).shiftLeft
+                · -- shiftRight
+                  rw [hw1]
+                  rw [decodePadded_shiftByRight 1 (by omega)
+                        (params.gsTransition [c]).shiftMagnitude b_left b_right r]
+                  rw [encodeConfig_singleton]
+                  rw [decodePadded_proper_form 1 b_left b_right r (by omega)]
+                  rfl
+                · -- shiftLeft
+                  rw [hw1]
+                  rw [decodePadded_shiftByLeft 1 (by omega)
+                        (params.gsTransition [c]).shiftMagnitude b_left b_right r
+                        (by omega)]
+                  rw [encodeConfig_singleton]
+                  rw [decodePadded_proper_form 1 b_left b_right r (by omega)]
+                  rfl
+    case neg =>
+      -- w ≥ 2.
+      have hWidth2 : params.windowWidth ≥ 2 := by omega
+      refine ⟨2 * (params.windowWidth - 1) +
+              (params.gsTransition b_cells).shiftMagnitude,
+              encodeConfig (GeneralizedShift.shiftBy
+                { left := b_left,
+                  cells := [getListElem (params.gsTransition b_cells).replacement 0],
+                  right := replAsc (params.gsTransition b_cells).replacement
+                    (params.windowWidth - 1) ++ b_right }
+                (params.gsTransition b_cells).shiftMagnitude
+                (params.gsTransition b_cells).shiftLeft), ?_, ?_⟩
+      · rw [BiInfiniteTuringMachine.iterationStep_eq_exactSteps]
+        exact fullSim_general_cView params hAlpha hWidth2 b_cells
+          (params.gsTransition b_cells).replacement
+          hLenB hAct hCellBoundB rfl hReplLen' hMagB b_left b_right
+      · -- Bridge.
+        rw [hb'Eq]
+        have hReplAscLen : (replAsc (params.gsTransition b_cells).replacement
+            (params.windowWidth - 1)).length = params.windowWidth - 1 := by
+          rw [replAsc_eq_tail _ params.windowWidth hReplLen' (by omega)]
+          rw [List.length_tail, hReplLen']
+        have hRightLenView : (replAsc (params.gsTransition b_cells).replacement
+            (params.windowWidth - 1) ++ b_right).length ≥ params.windowWidth - 1 := by
+          rw [List.length_append, hReplAscLen]; omega
+        have hReplDecomp : getListElem (params.gsTransition b_cells).replacement 0 ::
+            (params.gsTransition b_cells).replacement.tail =
+            (params.gsTransition b_cells).replacement := by
+          cases hr : (params.gsTransition b_cells).replacement with
+          | nil => rw [hr] at hReplLen'; simp at hReplLen'; omega
+          | cons r₀ rs =>
+            simp only [List.tail_cons]
+            show getListElem (r₀ :: rs) 0 :: rs = r₀ :: rs
+            simp [getListElem]
+        cases hDir : (params.gsTransition b_cells).shiftLeft
+        · -- shiftRight
+          rw [decodePadded_shiftByRight params.windowWidth hWidth
+                (params.gsTransition b_cells).shiftMagnitude b_left
+                (replAsc (params.gsTransition b_cells).replacement
+                  (params.windowWidth - 1) ++ b_right)
+                (getListElem (params.gsTransition b_cells).replacement 0)]
+          rw [encodeConfig_singleton]
+          rw [decodePadded_proper_form params.windowWidth b_left _ _ hRightLenView]
+          simp only [Option.map_some]
+          rw [List.take_left' hReplAscLen, List.drop_left' hReplAscLen]
+          rw [replAsc_eq_tail _ params.windowWidth hReplLen' (by omega)]
+          rw [hReplDecomp]
+          rfl
+        · -- shiftLeft
+          rw [decodePadded_shiftByLeft params.windowWidth hWidth
+                (params.gsTransition b_cells).shiftMagnitude b_left
+                (replAsc (params.gsTransition b_cells).replacement
+                  (params.windowWidth - 1) ++ b_right)
+                (getListElem (params.gsTransition b_cells).replacement 0)
+                hRightLenView]
+          rw [encodeConfig_singleton]
+          rw [decodePadded_proper_form params.windowWidth b_left _ _ hRightLenView]
+          simp only [Option.map_some]
+          rw [List.take_left' hReplAscLen, List.drop_left' hReplAscLen]
+          rw [replAsc_eq_tail _ params.windowWidth hReplLen' (by omega)]
+          rw [hReplDecomp]
+          rfl
   halting := by
     intro b h_step; exact hHalt b h_step
 
