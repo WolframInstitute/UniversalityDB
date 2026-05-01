@@ -138,7 +138,7 @@ Update the Wolfram Cloud link in the Notebooks table in `README.md`.
 
 **Tables to maintain:**
 - `## Notebooks` — one row per notebook: name, wiki source link, Wolfram Cloud link (or `—`).
-- `## Verified Simulation Edges` — one row per edge: short name, overhead (σ, τ), template, reference (author + year), number of `sorry`s (`Unproved` column).
+- `## Verified Simulation Edges` — one row per edge: short name, overhead (σ, τ), template, reference (author + year), number of `sorry`s (`Unproved` column). Sort rows from simplest to hardest, with `Unproved = 0` rows first, then increasing sorry count. Within the same sorry count, order by conceptual simplicity of the source/target systems.
 
 **When to update README:**
 - New notebook added → add one row to the Notebooks table.
