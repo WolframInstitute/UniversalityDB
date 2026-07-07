@@ -9,3 +9,4 @@
 - [ ] Close `fullSim_general` sorry (GS → TM general width)
 - [ ] Formalize Cocke-Minsky step simulation (TM → 2-Tag)
 - [ ] Implement GS → TM encoding in Wolfram Language
+- [ ] Import the Block Simulation Network of Elementary Cellular Automata dataset as graph edges (Wolfram Data Repository: https://datarepository.wolframcloud.com/resources/Block-Simulation-Network-of-Elementary-Cellular-Automata)
