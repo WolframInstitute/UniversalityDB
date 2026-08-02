@@ -1,4 +1,4 @@
-name: Lean Build Action CI
+name: Lean Build Action
 
 on:
   push:
@@ -11,6 +11,51 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+
+      - name: Cache elan toolchains
+        uses: actions/cache@v6
+        with:
+          path: ~/.elan
+          key: elan-${{ runner.os }}-${{ hashFiles('Lean/lean-toolchain') }}
+
+      - name: Cache Lake build
+        uses: actions/cache@v6
+        with:
+          path: Lean/.lake
+          key: lake-build-${{ runner.os }}-${{ hashFiles('Lean/lean-toolchain', 'Lean/lake-manifest.json', 'Lean/**/*.lean') }}
+          restore-keys: |
+            lake-build-${{ runner.os }}-
+
+      - name: Cache Rust toolchain and cargo registry (for nanoda)
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.rustup
+            ~/.cargo
+          key: cargo-nanoda-${{ runner.os }}
+
+      - name: Install elan
+        run: |
+          if ! command -v elan &> /dev/null; then
+            curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
+          fi
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Build project
+        working-directory: Lean
+        run: lake build
+
+      - name: Build umbrella module (for leanchecker/nanoda auto-detection)
+        working-directory: Lean
+        run: lake env lean -o .lake/build/lib/lean/UniversalityDB.olean UniversalityDB.lean
+
       - uses: leanprover/lean-action@v1
         with:
           lake-package-directory: Lean
+          build: "false"
+          leanchecker: "true"
+          # nanoda disabled: broken upstream (nanoda_lib's `debug` branch predates
+          # lean4export's NDJSON format). Waiting on this to be closed:
+          # https://github.com/leanprover/lean-action/issues/169
+          # nanoda: "true"
+          use-github-cache: "false"

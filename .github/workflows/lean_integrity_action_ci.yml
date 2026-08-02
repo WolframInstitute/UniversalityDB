@@ -1,4 +1,4 @@
-name: Proof Integrity Verification
+name: Lean Integrity Verification
 
 on:
   push:
