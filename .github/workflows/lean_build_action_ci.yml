@@ -49,7 +49,7 @@ jobs:
         working-directory: Lean
         run: lake env lean -o .lake/build/lib/lean/UniversalityDB.olean UniversalityDB.lean
 
-      - uses: leanprover/lean-action@v1
+      - uses: petr-kratochvil/lean-action@nanoda-use-master-branch
         with:
           lake-package-directory: Lean
           build: "false"
@@ -57,5 +57,5 @@ jobs:
           # nanoda disabled: broken upstream (nanoda_lib's `debug` branch predates
           # lean4export's NDJSON format). Waiting on this to be closed:
           # https://github.com/leanprover/lean-action/issues/169
-          # nanoda: "true"
+          nanoda: "true"
           use-github-cache: "false"
