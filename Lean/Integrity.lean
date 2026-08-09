@@ -12,6 +12,11 @@
     The shell script derives its leanchecker module list from lakefile.lean
     automatically — no third place to update.
   - New key theorems: add to `keyTheorems` below.
+
+  NOTE: the lists below name *declarations*, not only theorems. Assembled
+  simulations are `def`s (a `Simulation` carries an `encode` field, so it lives
+  in `Type`, not `Prop`); `CollectAxioms.collect` traverses `defnInfo` and
+  `thmInfo` identically, so their axiom closures are checked the same way.
 -/
 
 import Lean
@@ -47,8 +52,26 @@ private def hasNativeComponent : Name → Bool
 /-- Axioms that are tracked but not failures:
     - `sorryAx`: sorry in the proof chain (tracked in Wiki/Status.md)
     - names containing `_native`: native_decide computational axioms -/
-private def isTrackedAxiom (n : Name) : Bool :=
-  n == `sorryAx || hasNativeComponent n
+private def isTrackedAxiom (name : Name) : Bool :=
+  name == `sorryAx || hasNativeComponent name
+
+/-- Resolve a listed name to the constant that actually exists in the environment.
+
+    Needed because `CollectAxioms.collect` fails open: it matches on the
+    constant's `ConstantInfo` and falls through to `| none => pure ()` for a name
+    that is not in the environment, so an unknown name yields an *empty* axiom
+    set — indistinguishable from a clean trace. Two ways a listed name goes
+    unknown: a typo / rename / deletion (0 matches → violation), and a `private`
+    declaration, whose real name is mangled to
+    `_private.<Module>.0.<Namespace>.<name>` (recovered by the fallback below).
+
+    Returns every match so ambiguity is reported rather than silently resolved. -/
+private def resolveDecl (env : Environment) (name : Name) : Array Name :=
+  if env.contains name then
+    #[name]
+  else
+    env.constants.fold (init := #[]) fun acc c _ =>
+      if privateToUserName? c == some name then acc.push c else acc
 
 /-- Key theorems whose axiom dependencies are checked. -/
 private def keyTheorems : List Name := [
@@ -91,9 +114,36 @@ run_cmd do
   let env ← getEnv
   let mut hasViolation := false
 
+  -- Resolution check (must run before any axiom trace is trusted).
+  --
+  -- A name that does not resolve gets an empty axiom set from
+  -- `CollectAxioms.collect`, which reads as a clean trace. Resolve every listed
+  -- name first; only resolved names are traced below, and an unresolvable or
+  -- ambiguous one is a violation in its own right.
+  let mut keyResolved : Array (Name × Name) := #[]
+  let mut spotResolved : Array (Name × Name) := #[]
+  for (declName, isKey) in
+      keyTheorems.map (·, true) ++ spotCheckTheorems.map (·, false) do
+    let found := resolveDecl env declName
+    if found.size == 1 then
+      let actual := found[0]!
+      if actual != declName then
+        logInfo m!"RESOLVED {declName} -> {actual} (private)"
+      if isKey then keyResolved := keyResolved.push (declName, actual)
+      else spotResolved := spotResolved.push (declName, actual)
+    else if found.isEmpty then
+      logError m!"INTEGRITY VIOLATION: '{declName}' is not a declaration in the \
+        environment (misspelled, renamed, or removed). Its axiom trace would be \
+        vacuously empty."
+      hasViolation := true
+    else
+      logError m!"INTEGRITY VIOLATION: '{declName}' is ambiguous — it matches \
+        several private theorems: {found}. Name the intended one exactly."
+      hasViolation := true
+
   -- Check key theorems: only standard axioms allowed (+ sorryAx if tracked)
-  for thmName in keyTheorems do
-    let (_, s) := (CollectAxioms.collect thmName).run env |>.run {}
+  for (thmName, actual) in keyResolved do
+    let (_, s) := (CollectAxioms.collect actual).run env |>.run {}
     let mut unexpected : Array Name := #[]
     for ax in s.axioms do
       if ax ∉ standardAxioms && !isTrackedAxiom ax then
@@ -109,8 +159,8 @@ run_cmd do
         logInfo m!"TRACE {thmName}: {s.axioms}"
 
   -- Check spot-check theorems: native_decide axioms are expected
-  for thmName in spotCheckTheorems do
-    let (_, s) := (CollectAxioms.collect thmName).run env |>.run {}
+  for (thmName, actual) in spotResolved do
+    let (_, s) := (CollectAxioms.collect actual).run env |>.run {}
     let mut unexpected : Array Name := #[]
     for ax in s.axioms do
       if ax ∉ standardAxioms && !isTrackedAxiom ax then

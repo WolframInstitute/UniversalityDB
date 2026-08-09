@@ -223,6 +223,7 @@ Given a verified Lean proof, an LLM can produce an informal proof readable by ma
 
 ## See also
 
+- [Integrity Name Resolution](IntegrityNameResolution.md) — the fail-open gap in the axiom check (unresolvable / private names) and how it was closed
 - [SimulationEncoding](SimulationEncoding.md) — the core Lean abstraction being verified
 - [Overhead](Overhead.md) — spatial and temporal cost formalization
 - [ComputationalMachine](ComputationalMachine.md) — the vertex type

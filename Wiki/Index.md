@@ -49,6 +49,7 @@ Interactive guided walk through the project — say **"start tour"** to begin. T
 - [Pipeline Architecture](Concepts/PipelineArchitecture.md) — LLM pipeline for auto-expanding the graph (future)
 - [Lean Blueprint](Concepts/LeanBlueprint.md) — PFR-style blueprint with `\lean{}` annotations
 - [Proof Integrity](Concepts/ProofIntegrity.md) — trust model for LLM-generated Lean proofs: locked goals, no axioms, sorry tracking, native_decide policy, cross-validation
+- [Integrity Name Resolution](Concepts/IntegrityNameResolution.md) — why an unresolvable name in `Integrity.lean` used to pass silently, and the resolution check that closes it
 
 ## Notebooks
 
