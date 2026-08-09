@@ -1,0 +1,37 @@
+name: Lean Integrity Verification
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Cache elan toolchains
+        uses: actions/cache@v6
+        with:
+          path: ~/.elan
+          key: elan-${{ runner.os }}-${{ hashFiles('Lean/lean-toolchain') }}
+
+      - name: Cache Lake build
+        uses: actions/cache@v6
+        with:
+          path: Lean/.lake
+          key: lake-build-${{ runner.os }}-${{ hashFiles('Lean/lean-toolchain', 'Lean/lake-manifest.json', 'Lean/**/*.lean') }}
+          restore-keys: |
+            lake-build-${{ runner.os }}-
+
+      - name: Install elan
+        run: |
+          if ! command -v elan &> /dev/null; then
+            curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
+          fi
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Run proof integrity verification
+        run: Scripts/verify_integrity.sh
