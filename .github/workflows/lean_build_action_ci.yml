@@ -45,17 +45,27 @@ jobs:
         working-directory: Lean
         run: lake build
 
-      - name: Build umbrella module (for leanchecker/nanoda auto-detection)
+      - name: Build umbrella module (for leanchecker)
         working-directory: Lean
         run: lake env lean -o .lake/build/lib/lean/UniversalityDB.olean UniversalityDB.lean
 
-      - uses: leanprover/lean-action@v1
+      - name: Build umbrella module for nanoda (native_decide-free subset)
+        working-directory: Lean
+        run: lake env lean -o .lake/build/lib/lean/NanodaSafe.olean NanodaSafe.lean
+
+      # Fork of https://github.com/leanprover/lean-action/ which enables `nanoda-modules` input
+      # The fork also tracks the debug-branch/NDJSON incompatibility:
+      # https://github.com/leanprover/lean-action/issues/169
+      - uses: petr-kratochvil/lean-action@master
         with:
           lake-package-directory: Lean
           build: "false"
           leanchecker: "true"
-          # nanoda disabled: broken upstream (nanoda_lib's `debug` branch predates
-          # lean4export's NDJSON format). Waiting on this to be closed:
-          # https://github.com/leanprover/lean-action/issues/169
-          # nanoda: "true"
+          nanoda: "true"
+          nanoda-allow-sorry: "false"
+          # Without `nanoda-modules`, nanoda would check the module auto-detected
+          # from the package name in `lakefile.lean` («UniversalityDB»), which pulls
+          # in the allowed native_decide usages that nanoda would reject. Scope it
+          # to the native_decide-free subset instead (see NanodaSafe.lean).
+          nanoda-modules: "NanodaSafe"
           use-github-cache: "false"
