@@ -1,0 +1,17 @@
+name: Commit Format Check
+
+on:
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: wagoid/commitlint-action@v6
+        with:
+          configFile: .commitlintrc.yml
